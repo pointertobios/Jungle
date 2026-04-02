@@ -225,8 +225,8 @@ dependencies = [
  "async-trait",
  "itertools",
  "jungle-macros",
+ "quick-xml",
  "serde",
- "spex",
  "tokio",
  "trybuild",
 ]
@@ -343,6 +343,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.39.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "958f21e8e7ceb5a1aa7fa87fab28e7c75976e0bfe7e23ff069e0a260f894067d"
+dependencies = [
+ "memchr",
+ "tokio",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -428,12 +438,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sipp"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e3e79ba5cb5e76afe752244678859d5bad23667fabc02a97ed5b5d885d10db2"
-
-[[package]]
 name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -447,15 +451,6 @@ checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
  "windows-sys",
-]
-
-[[package]]
-name = "spex"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b83c7d4fa0a543debbafaffdb623f198a69e1b18ddab9e15dfa3096500989afb"
-dependencies = [
- "sipp",
 ]
 
 [[package]]

@@ -1,0 +1,11 @@
+<?jaml version="1.0"?>
+<entity id="1000" name="root" enabled="true">
+    <prefab-ref name="prefab_example" source="/prefabs/example.prefab.jaml"/>
+    <prefab name="instanciated_prefab" source="/prefabs/example.prefab.jaml"/>
+
+    <component type="Transform">
+        <position x="0" y="0" z="0"/>
+        <rotation x="0" y="0" z="0"/>
+        <scale x="1" y="1" z="1"/>
+    </component>
+</entity>

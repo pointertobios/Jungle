@@ -7,7 +7,7 @@ use tokio::{
 
 use crate::ecs::{
     component::{Component, ComponentManager, ComponentManagerImpl},
-    components::node::Node,
+    components::{node::Node, prefab_ref::PrefabRef},
 };
 
 pub struct GameCore {
@@ -31,6 +31,7 @@ impl GameCore {
                 .unwrap(),
         };
         res.register_manager::<Node>();
+        res.register_manager::<PrefabRef>();
         res
     }
 
@@ -43,7 +44,7 @@ impl GameCore {
         })
     }
 
-    fn register_manager<C: Component>(&mut self) {
+    pub fn register_manager<C: Component>(&mut self) {
         self.name_to_type
             .insert(C::default().type_name().to_string(), TypeId::of::<C>());
         self.managers.insert(
