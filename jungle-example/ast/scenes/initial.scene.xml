@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<entity id="0" name="root" enabled="true">
+    <prefab-ref name="prefab_example" source="root.prefab.xml"/>
+</entity>

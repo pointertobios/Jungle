@@ -1,0 +1,4 @@
+[base]
+prefabs = "prefabs"
+scenes = "scenes"
+initial-scene = "root.scene.xml"

@@ -1,0 +1,14 @@
+[workspace]
+resolver = "3"
+members = [
+    "jungle-cli",
+    "jungle-client",
+    "jungle-core",
+    "jungle-editor",
+    "jungle-example",
+    "jungle-macros",
+    "jungle-server",
+]
+
+[profile.dev.build-override]
+opt-level = 3

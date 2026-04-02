@@ -1,0 +1,8 @@
+error: `#[component(...)]` requires a field named `entity`
+ --> tests/ui/component_macro/missing_entity.rs:6:22
+  |
+6 |   struct MissingEntity {
+  |  ______________________^
+7 | |     value: u32,
+8 | | }
+  | |_^

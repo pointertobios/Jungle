@@ -1,0 +1,7 @@
+error: `#[component(...)]` can only be applied to structs
+  --> tests/ui/component_macro/not_a_struct.rs:9:1
+   |
+ 9 | / enum NotAStruct {
+10 | |     Value { entity: Entity },
+11 | | }
+   | |_^

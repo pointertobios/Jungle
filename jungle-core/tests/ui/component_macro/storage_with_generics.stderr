@@ -1,0 +1,5 @@
+error: `storage` should not include generic arguments; write `storage = SparseComponentStorage`, not `storage = SparseComponentStorage<Self>`
+ --> tests/ui/component_macro/storage_with_generics.rs:8:23
+  |
+8 | #[component(storage = SparseComponentStorage<Self>, exclusive = false)]
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,16 @@
+[package]
+name = "jungle-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { version = "1.0.102", features = ["backtrace"] }
+async-trait = "0.1.89"
+itertools = "0.14.0"
+jungle-macros = { version = "0.1.0", path = "../jungle-macros" }
+serde = "1.0.228"
+spex = "0.2.2"
+tokio = { version = "1.50.0", features = ["full"] }
+
+[dev-dependencies]
+trybuild = "1.0.112"

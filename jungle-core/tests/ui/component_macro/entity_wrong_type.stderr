@@ -1,0 +1,5 @@
+error: the `entity` field must have type `Entity`
+ --> tests/ui/component_macro/entity_wrong_type.rs:7:13
+  |
+7 |     entity: u64,
+  |             ^^^

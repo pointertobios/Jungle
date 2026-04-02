@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<entity id="100" name="root" enabled="true">
+    <entity id="101" name="child1" enabled="true" client_only="true"/>
+    <entity id="102" name="child2" enabled="true" server_only="true"/>
+</entity>

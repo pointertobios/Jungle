@@ -1,0 +1,7 @@
+error: missing required `exclusive = true/false` argument
+ --> tests/ui/component_macro/missing_exclusive.rs:8:1
+  |
+8 | #[component(storage = SparseComponentStorage)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `component` (in Nightly builds, run with -Z macro-backtrace for more info)
