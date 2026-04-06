@@ -5,8 +5,8 @@ use crate::ecs::{
     entity::Entity,
 };
 
-#[component(storage = SparseComponentStorage, exclusive = true)]
-#[derive(Debug)]
+#[component(noserde, storage = SparseComponentStorage, exclusive = true)]
+#[derive(Debug, Default)]
 pub struct Node {
     entity: Entity,
 
@@ -18,27 +18,3 @@ pub struct Node {
 }
 
 impl ComponentExt for Node {}
-
-impl Node {
-    pub fn new(entity: Entity, name: String) -> Self {
-        Self {
-            entity,
-            name,
-            enabled: true,
-            parent: None,
-            children: Vec::new(),
-        }
-    }
-}
-
-impl Default for Node {
-    fn default() -> Self {
-        Self {
-            entity: Entity::default(),
-            name: String::new(),
-            enabled: true,
-            parent: None,
-            children: Vec::new(),
-        }
-    }
-}

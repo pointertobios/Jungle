@@ -1,4 +1,4 @@
-error: unknown component argument `exclusiv`; expected `storage = StorageType` or `exclusive = true/false`
+error: unknown component argument `exclusiv`; expected `noserde`, `storage = StorageType`, or `exclusive = true/false`
  --> tests/ui/component_macro/unknown_key.rs:8:66
   |
 8 | #[component(storage = SparseComponentStorage, exclusive = false, exclusiv = true)]

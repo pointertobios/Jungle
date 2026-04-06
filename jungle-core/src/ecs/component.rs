@@ -4,20 +4,37 @@ use std::{
 };
 
 use async_trait::async_trait;
+use blake3::hash;
 use itertools::Either;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::ecs::entity::Entity;
 
-pub trait Component: 'static + ComponentExt + Default + Sized + Send + Sync {
+pub type ComponentId = u128; // 组件类型 ID，使用组件类型名称的 blake3 哈希值的前 16 字节
+
+pub trait Component: 'static + Default + Sized + Send + Sync + ComponentExt {
     type Storage: ComponentStorage<Self>;
 
     const EXCLUSIVE: bool; // 互斥，每个 Entity 最多只能有一个该 Component 类型的组件
 
-    fn type_id(&self) -> TypeId;
-    fn type_name(&self) -> &'static str;
-    fn downcast_unchecked<T>(&self) -> &T;
-    fn downcast_unchecked_mut<T>(&mut self) -> &mut T;
+    fn id() -> ComponentId {
+        let digest = hash(Self::type_name().as_bytes());
+        let mut bytes = [0_u8; 16];
+        bytes.copy_from_slice(&digest.as_bytes()[..16]);
+        ComponentId::from_le_bytes(bytes)
+    }
+
+    fn type_name() -> &'static str;
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn downcast_unchecked<T: Component>(&self) -> &T;
+    fn downcast_unchecked_mut<T: Component>(&mut self) -> &mut T;
 
     fn entity(&self) -> Entity;
 }
@@ -33,7 +50,7 @@ pub trait ComponentExt {
 
 #[async_trait]
 pub trait ComponentManager {
-    fn get_component_type_id(&self) -> TypeId;
+    fn get_component_id(&self) -> ComponentId;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
@@ -42,6 +59,9 @@ pub trait ComponentManager {
     async fn remove_component(&mut self, entity: Entity);
 
     async fn process_pending(&mut self);
+
+    fn get_components(&self) -> Box<dyn Iterator<Item = (Entity, &dyn Any)> + '_>;
+    fn get_components_mut(&mut self) -> Box<dyn Iterator<Item = (Entity, &mut dyn Any)> + '_>;
 }
 
 pub struct ComponentManagerImpl<C: Component> {
@@ -82,8 +102,8 @@ impl<C: Component> Default for ComponentManagerImpl<C> {
 
 #[async_trait]
 impl<C: Component> ComponentManager for ComponentManagerImpl<C> {
-    fn get_component_type_id(&self) -> TypeId {
-        TypeId::of::<C>()
+    fn get_component_id(&self) -> u128 {
+        C::id()
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -121,6 +141,22 @@ impl<C: Component> ComponentManager for ComponentManagerImpl<C> {
         while let Ok(entity) = self.remove_channel.1.try_recv() {
             self.storage.remove(entity);
         }
+    }
+
+    fn get_components(&self) -> Box<dyn Iterator<Item = (Entity, &dyn Any)> + '_> {
+        Box::new(
+            self.storage
+                .iter()
+                .map(|(entity, component)| (entity, component as &dyn Any)),
+        )
+    }
+
+    fn get_components_mut(&mut self) -> Box<dyn Iterator<Item = (Entity, &mut dyn Any)> + '_> {
+        Box::new(
+            self.storage
+                .iter_mut()
+                .map(|(entity, component)| (entity, component as &mut dyn Any)),
+        )
     }
 }
 
@@ -372,13 +408,540 @@ impl<C: Component> ComponentStorage<C> for ContinuousComponentStorage<C> {
 
 #[cfg(test)]
 mod tests {
-    use std::any::TypeId;
+    use std::{fmt, sync::Mutex};
+
+    use serde::{
+        Serialize,
+        ser::{Impossible, SerializeStruct, Serializer},
+    };
 
     use super::{
         Component, ComponentExt, ComponentManagerImpl, ContinuousComponentStorage,
         SparseComponentStorage,
     };
     use crate::{ecs::entity::Entity, macros::component};
+
+    #[derive(Debug, PartialEq)]
+    enum SerializedFieldValue {
+        U32(u32),
+        String(String),
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct SerializedStruct {
+        name: &'static str,
+        fields: Vec<(&'static str, SerializedFieldValue)>,
+    }
+
+    #[derive(Debug)]
+    struct TestSerializerError(String);
+
+    impl fmt::Display for TestSerializerError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str(&self.0)
+        }
+    }
+
+    impl std::error::Error for TestSerializerError {}
+
+    impl serde::ser::Error for TestSerializerError {
+        fn custom<T: fmt::Display>(msg: T) -> Self {
+            Self(msg.to_string())
+        }
+    }
+
+    struct FieldValueSerializer;
+
+    impl Serializer for FieldValueSerializer {
+        type Ok = SerializedFieldValue;
+        type Error = TestSerializerError;
+        type SerializeSeq = Impossible<SerializedFieldValue, TestSerializerError>;
+        type SerializeTuple = Impossible<SerializedFieldValue, TestSerializerError>;
+        type SerializeTupleStruct = Impossible<SerializedFieldValue, TestSerializerError>;
+        type SerializeTupleVariant = Impossible<SerializedFieldValue, TestSerializerError>;
+        type SerializeMap = Impossible<SerializedFieldValue, TestSerializerError>;
+        type SerializeStruct = Impossible<SerializedFieldValue, TestSerializerError>;
+        type SerializeStructVariant = Impossible<SerializedFieldValue, TestSerializerError>;
+
+        fn serialize_u32(self, value: u32) -> Result<Self::Ok, Self::Error> {
+            Ok(SerializedFieldValue::U32(value))
+        }
+
+        fn serialize_str(self, value: &str) -> Result<Self::Ok, Self::Error> {
+            Ok(SerializedFieldValue::String(value.to_string()))
+        }
+
+        fn serialize_bool(self, _value: bool) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: bool".to_string(),
+            ))
+        }
+
+        fn serialize_i8(self, _value: i8) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: i8".to_string(),
+            ))
+        }
+
+        fn serialize_i16(self, _value: i16) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: i16".to_string(),
+            ))
+        }
+
+        fn serialize_i32(self, _value: i32) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: i32".to_string(),
+            ))
+        }
+
+        fn serialize_i64(self, _value: i64) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: i64".to_string(),
+            ))
+        }
+
+        fn serialize_i128(self, _value: i128) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: i128".to_string(),
+            ))
+        }
+
+        fn serialize_u8(self, _value: u8) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: u8".to_string(),
+            ))
+        }
+
+        fn serialize_u16(self, _value: u16) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: u16".to_string(),
+            ))
+        }
+
+        fn serialize_u64(self, _value: u64) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: u64".to_string(),
+            ))
+        }
+
+        fn serialize_f32(self, _value: f32) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: f32".to_string(),
+            ))
+        }
+
+        fn serialize_f64(self, _value: f64) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: f64".to_string(),
+            ))
+        }
+
+        fn serialize_char(self, _value: char) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: char".to_string(),
+            ))
+        }
+
+        fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: bytes".to_string(),
+            ))
+        }
+
+        fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: none".to_string(),
+            ))
+        }
+
+        fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+        where
+            T: ?Sized + Serialize,
+        {
+            Err(TestSerializerError(
+                "unsupported test field type: some".to_string(),
+            ))
+        }
+
+        fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: unit".to_string(),
+            ))
+        }
+
+        fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: unit struct".to_string(),
+            ))
+        }
+
+        fn serialize_unit_variant(
+            self,
+            _name: &'static str,
+            _variant_index: u32,
+            _variant: &'static str,
+        ) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: unit variant".to_string(),
+            ))
+        }
+
+        fn serialize_newtype_struct<T>(
+            self,
+            _name: &'static str,
+            _value: &T,
+        ) -> Result<Self::Ok, Self::Error>
+        where
+            T: ?Sized + Serialize,
+        {
+            Err(TestSerializerError(
+                "unsupported test field type: newtype struct".to_string(),
+            ))
+        }
+
+        fn serialize_newtype_variant<T>(
+            self,
+            _name: &'static str,
+            _variant_index: u32,
+            _variant: &'static str,
+            _value: &T,
+        ) -> Result<Self::Ok, Self::Error>
+        where
+            T: ?Sized + Serialize,
+        {
+            Err(TestSerializerError(
+                "unsupported test field type: newtype variant".to_string(),
+            ))
+        }
+
+        fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: seq".to_string(),
+            ))
+        }
+
+        fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: tuple".to_string(),
+            ))
+        }
+
+        fn serialize_tuple_struct(
+            self,
+            _name: &'static str,
+            _len: usize,
+        ) -> Result<Self::SerializeTupleStruct, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: tuple struct".to_string(),
+            ))
+        }
+
+        fn serialize_tuple_variant(
+            self,
+            _name: &'static str,
+            _variant_index: u32,
+            _variant: &'static str,
+            _len: usize,
+        ) -> Result<Self::SerializeTupleVariant, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: tuple variant".to_string(),
+            ))
+        }
+
+        fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: map".to_string(),
+            ))
+        }
+
+        fn serialize_struct(
+            self,
+            _name: &'static str,
+            _len: usize,
+        ) -> Result<Self::SerializeStruct, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: nested struct".to_string(),
+            ))
+        }
+
+        fn serialize_struct_variant(
+            self,
+            _name: &'static str,
+            _variant_index: u32,
+            _variant: &'static str,
+            _len: usize,
+        ) -> Result<Self::SerializeStructVariant, Self::Error> {
+            Err(TestSerializerError(
+                "unsupported test field type: struct variant".to_string(),
+            ))
+        }
+    }
+
+    struct StructCollector {
+        name: &'static str,
+        fields: Vec<(&'static str, SerializedFieldValue)>,
+    }
+
+    impl SerializeStruct for StructCollector {
+        type Ok = SerializedStruct;
+        type Error = TestSerializerError;
+
+        fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+        where
+            T: ?Sized + Serialize,
+        {
+            self.fields
+                .push((key, value.serialize(FieldValueSerializer)?));
+            Ok(())
+        }
+
+        fn end(self) -> Result<Self::Ok, Self::Error> {
+            Ok(SerializedStruct {
+                name: self.name,
+                fields: self.fields,
+            })
+        }
+    }
+
+    struct StructCaptureSerializer;
+
+    impl Serializer for StructCaptureSerializer {
+        type Ok = SerializedStruct;
+        type Error = TestSerializerError;
+        type SerializeSeq = Impossible<SerializedStruct, TestSerializerError>;
+        type SerializeTuple = Impossible<SerializedStruct, TestSerializerError>;
+        type SerializeTupleStruct = Impossible<SerializedStruct, TestSerializerError>;
+        type SerializeTupleVariant = Impossible<SerializedStruct, TestSerializerError>;
+        type SerializeMap = Impossible<SerializedStruct, TestSerializerError>;
+        type SerializeStruct = StructCollector;
+        type SerializeStructVariant = Impossible<SerializedStruct, TestSerializerError>;
+
+        fn serialize_struct(
+            self,
+            name: &'static str,
+            len: usize,
+        ) -> Result<Self::SerializeStruct, Self::Error> {
+            Ok(StructCollector {
+                name,
+                fields: Vec::with_capacity(len),
+            })
+        }
+
+        fn serialize_bool(self, _value: bool) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_i8(self, _value: i8) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_i16(self, _value: i16) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_i32(self, _value: i32) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_i64(self, _value: i64) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_i128(self, _value: i128) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_u8(self, _value: u8) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_u16(self, _value: u16) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_u32(self, _value: u32) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_u64(self, _value: u64) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_u128(self, _value: u128) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_f32(self, _value: f32) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_f64(self, _value: f64) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_char(self, _value: char) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_str(self, _value: &str) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+        where
+            T: ?Sized + Serialize,
+        {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_unit_variant(
+            self,
+            _name: &'static str,
+            _variant_index: u32,
+            _variant: &'static str,
+        ) -> Result<Self::Ok, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_newtype_struct<T>(
+            self,
+            _name: &'static str,
+            _value: &T,
+        ) -> Result<Self::Ok, Self::Error>
+        where
+            T: ?Sized + Serialize,
+        {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_newtype_variant<T>(
+            self,
+            _name: &'static str,
+            _variant_index: u32,
+            _variant: &'static str,
+            _value: &T,
+        ) -> Result<Self::Ok, Self::Error>
+        where
+            T: ?Sized + Serialize,
+        {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_tuple_struct(
+            self,
+            _name: &'static str,
+            _len: usize,
+        ) -> Result<Self::SerializeTupleStruct, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_tuple_variant(
+            self,
+            _name: &'static str,
+            _variant_index: u32,
+            _variant: &'static str,
+            _len: usize,
+        ) -> Result<Self::SerializeTupleVariant, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+
+        fn serialize_struct_variant(
+            self,
+            _name: &'static str,
+            _variant_index: u32,
+            _variant: &'static str,
+            _len: usize,
+        ) -> Result<Self::SerializeStructVariant, Self::Error> {
+            Err(TestSerializerError(
+                "expected struct serialization".to_string(),
+            ))
+        }
+    }
 
     #[component(storage = SparseComponentStorage, exclusive = false)]
     struct BasicComponent {
@@ -412,13 +975,64 @@ mod tests {
 
     impl ComponentExt for ExclusiveComponent {}
 
+    #[component(storage = SparseComponentStorage, exclusive = false)]
+    struct OtherComponent {
+        entity: Entity,
+    }
+
+    impl Default for OtherComponent {
+        fn default() -> Self {
+            Self {
+                entity: Entity::default(),
+            }
+        }
+    }
+
+    impl ComponentExt for OtherComponent {}
+
+    #[component(storage = SparseComponentStorage, exclusive = true)]
+    #[derive(Debug)]
+    struct SerializableComponent {
+        entity: Entity,
+        #[serde]
+        name: String,
+        #[serde(u32, |value| *value.lock().unwrap(), |value| Mutex::new(*value))]
+        counter: Mutex<u32>,
+        cache: u32,
+    }
+
+    impl PartialEq for SerializableComponent {
+        fn eq(&self, other: &Self) -> bool {
+            self.entity == other.entity
+                && self.name == other.name
+                && self.cache == other.cache
+                && *self.counter.lock().unwrap() == *other.counter.lock().unwrap()
+        }
+    }
+
+    impl Default for SerializableComponent {
+        fn default() -> Self {
+            Self {
+                entity: Entity::default(),
+                name: String::new(),
+                counter: Mutex::new(0),
+                cache: 99,
+            }
+        }
+    }
+
+    impl ComponentExt for SerializableComponent {}
+
     #[test]
     fn component_macro_generates_component_impl() {
         let entity = unsafe { std::mem::zeroed::<Entity>() };
         let mut component = BasicComponent { entity, value: 7 };
+        let digest = blake3::hash("BasicComponent".as_bytes());
+        let mut bytes = [0_u8; 16];
+        bytes.copy_from_slice(&digest.as_bytes()[..16]);
 
-        assert_eq!(component.type_id(), TypeId::of::<BasicComponent>());
-        assert_eq!(component.type_name(), "BasicComponent");
+        assert_eq!(BasicComponent::type_name(), "BasicComponent");
+        assert_eq!(BasicComponent::id(), u128::from_le_bytes(bytes));
         assert!(!<BasicComponent as Component>::EXCLUSIVE);
         assert!(component.entity() == entity);
         assert_eq!(component.downcast_unchecked::<BasicComponent>().value, 7);
@@ -431,5 +1045,58 @@ mod tests {
     fn component_macro_supports_unordered_args() {
         assert!(<ExclusiveComponent as Component>::EXCLUSIVE);
         let _manager = ComponentManagerImpl::<ExclusiveComponent>::new();
+    }
+
+    #[test]
+    #[should_panic(expected = "component downcast failed")]
+    fn component_macro_panics_on_wrong_downcast_type() {
+        let component = BasicComponent {
+            entity: Entity::default(),
+            value: 7,
+        };
+
+        let _ = component.downcast_unchecked::<OtherComponent>();
+    }
+
+    #[test]
+    #[should_panic(expected = "component downcast failed")]
+    fn component_macro_panics_on_wrong_mut_downcast_type() {
+        let mut component = BasicComponent {
+            entity: Entity::default(),
+            value: 7,
+        };
+
+        let _ = component.downcast_unchecked_mut::<OtherComponent>();
+    }
+
+    #[test]
+    fn component_macro_serializes_only_marked_fields() {
+        let component = SerializableComponent {
+            entity: Entity::default(),
+            name: "player".to_string(),
+            counter: Mutex::new(7),
+            cache: 99,
+        };
+
+        let serialized = component
+            .serialize(StructCaptureSerializer)
+            .expect("component serialization should succeed");
+
+        assert_eq!(
+            serialized,
+            SerializedStruct {
+                name: "SerializableComponent",
+                fields: vec![
+                    ("name", SerializedFieldValue::String("player".to_string()),),
+                    ("counter", SerializedFieldValue::U32(7)),
+                ],
+            }
+        );
+
+        let bytes = bincode::serialize(&component).expect("bincode serialization should succeed");
+        let restored: SerializableComponent =
+            bincode::deserialize(&bytes).expect("bincode deserialization should succeed");
+
+        assert_eq!(restored, component);
     }
 }

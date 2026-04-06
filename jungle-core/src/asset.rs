@@ -1,6 +1,6 @@
 use std::num::NonZeroU128;
 
-pub mod ecs;
+pub mod entity_tree;
 pub mod env;
 pub mod prefab;
 pub mod scene;

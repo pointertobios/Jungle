@@ -8,7 +8,8 @@ use crate::{
     },
 };
 
-#[component(storage = SparseComponentStorage, exclusive = true)]
+#[component(noserde, storage = SparseComponentStorage, exclusive = true)]
+#[derive(Debug, Default)]
 pub struct PrefabRef {
     entity: Entity,
 
@@ -17,19 +18,3 @@ pub struct PrefabRef {
 }
 
 impl ComponentExt for PrefabRef {}
-
-impl PrefabRef {
-    pub fn new() -> Self {
-        Self {
-            entity: Entity::default(),
-            name: String::new(),
-            asset_id: AssetId::default(),
-        }
-    }
-}
-
-impl Default for PrefabRef {
-    fn default() -> Self {
-        Self::new()
-    }
-}

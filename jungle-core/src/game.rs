@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::HashMap, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
 use tokio::{
     runtime::{self, Runtime},
@@ -6,13 +6,68 @@ use tokio::{
 };
 
 use crate::ecs::{
-    component::{Component, ComponentManager, ComponentManagerImpl},
+    component::{Component, ComponentId, ComponentManager, ComponentManagerImpl},
     components::{node::Node, prefab_ref::PrefabRef},
 };
 
+pub trait Game {
+    fn run(self) -> anyhow::Result<()>;
+
+    fn get_managers(&self) -> &HashMap<ComponentId, Box<dyn ComponentManager>>;
+    fn get_managers_mut(&mut self) -> &mut HashMap<ComponentId, Box<dyn ComponentManager>>;
+    fn get_name_to_type(&self) -> &HashMap<String, ComponentId>;
+    fn get_name_to_type_mut(&mut self) -> &mut HashMap<String, ComponentId>;
+
+    fn register_manager<C: Component>(&mut self) {
+        self.get_name_to_type_mut()
+            .insert(C::type_name().to_string(), C::id());
+        self.get_managers_mut()
+            .insert(C::id(), Box::new(ComponentManagerImpl::<C>::new()));
+    }
+
+    fn get_manager<C: Component>(&self) -> Option<&ComponentManagerImpl<C>> {
+        self.get_managers().get(&C::id()).map(|manager| {
+            manager
+                .as_any()
+                .downcast_ref::<ComponentManagerImpl<C>>()
+                .unwrap()
+        })
+    }
+
+    fn get_manager_mut<C: Component>(&mut self) -> Option<&mut ComponentManagerImpl<C>> {
+        self.get_managers_mut().get_mut(&C::id()).map(|manager| {
+            manager
+                .as_any_mut()
+                .downcast_mut::<ComponentManagerImpl<C>>()
+                .unwrap()
+        })
+    }
+
+    fn get_manager_by_name(&self, name: &str) -> Option<&dyn ComponentManager> {
+        self.get_name_to_type()
+            .get(name)
+            .cloned()
+            .and_then(|id| self.get_managers().get(&id).map(|boxv| boxv.as_ref()))
+    }
+
+    fn get_manager_by_name_mut(
+        &mut self,
+        name: &str,
+    ) -> Option<&mut (dyn ComponentManager + 'static)> {
+        self.get_name_to_type_mut()
+            .get(name)
+            .cloned()
+            .and_then(move |id| {
+                self.get_managers_mut()
+                    .get_mut(&id)
+                    .map(|boxv| boxv.as_mut())
+            })
+    }
+}
+
 pub struct GameCore {
-    managers: HashMap<TypeId, Box<dyn ComponentManager>>,
-    name_to_type: HashMap<String, TypeId>,
+    managers: HashMap<ComponentId, Box<dyn ComponentManager>>,
+    name_to_type: HashMap<String, ComponentId>,
 
     game_tick: Duration,
 
@@ -34,8 +89,10 @@ impl GameCore {
         res.register_manager::<PrefabRef>();
         res
     }
+}
 
-    pub fn run(self) -> anyhow::Result<()> {
+impl Game for GameCore {
+    fn run(self) -> anyhow::Result<()> {
         self.tokio_runtime.block_on(async {
             let mut itv = interval(self.game_tick);
             loop {
@@ -44,32 +101,19 @@ impl GameCore {
         })
     }
 
-    pub fn register_manager<C: Component>(&mut self) {
-        self.name_to_type
-            .insert(C::default().type_name().to_string(), TypeId::of::<C>());
-        self.managers.insert(
-            TypeId::of::<C>(),
-            Box::new(ComponentManagerImpl::<C>::new()),
-        );
+    fn get_managers(&self) -> &HashMap<ComponentId, Box<dyn ComponentManager>> {
+        &self.managers
     }
 
-    pub fn get_manager<C: Component>(&self) -> Option<&ComponentManagerImpl<C>> {
-        let type_id = TypeId::of::<C>();
-        if let Some(manager) = self.managers.get(&type_id) {
-            manager.as_any().downcast_ref::<ComponentManagerImpl<C>>()
-        } else {
-            None
-        }
+    fn get_managers_mut(&mut self) -> &mut HashMap<ComponentId, Box<dyn ComponentManager>> {
+        &mut self.managers
     }
 
-    pub fn get_manager_mut<C: Component>(&mut self) -> Option<&mut ComponentManagerImpl<C>> {
-        let type_id = TypeId::of::<C>();
-        if let Some(manager) = self.managers.get_mut(&type_id) {
-            manager
-                .as_any_mut()
-                .downcast_mut::<ComponentManagerImpl<C>>()
-        } else {
-            None
-        }
+    fn get_name_to_type(&self) -> &HashMap<String, ComponentId> {
+        &self.name_to_type
+    }
+
+    fn get_name_to_type_mut(&mut self) -> &mut HashMap<String, ComponentId> {
+        &mut self.name_to_type
     }
 }

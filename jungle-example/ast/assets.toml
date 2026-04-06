@@ -1,2 +1,2 @@
 [base]
-initial-scene = "root.scene.xml"
+initial-scene = "scene/initial.scene.xml"
