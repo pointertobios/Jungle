@@ -1,0 +1,5 @@
+error: `#[serde]` on component fields does not take arguments; implement `ComponentSerdeField` for the field type instead
+  --> tests/ui/component_macro/serde_with_args.rs:10:5
+   |
+10 |     #[serde(u32, |value| *value, |value| *value)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

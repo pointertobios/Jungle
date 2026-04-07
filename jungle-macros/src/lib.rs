@@ -5,8 +5,8 @@ use proc_macro2::Span;
 use quote::{ToTokens, format_ident, quote};
 use syn::spanned::Spanned;
 use syn::{
-    Attribute, Expr, Field, Fields, Ident, Item, ItemStruct, LitBool, Meta, Path, PathArguments,
-    Result, Token, Type, TypePath, parse::Parse, parse::Parser, parse_macro_input, parse_quote,
+    Attribute, Field, Fields, Ident, Item, ItemStruct, LitBool, Meta, Path, PathArguments, Result,
+    Type, TypePath, parse::Parser, parse_macro_input, parse_quote,
 };
 
 struct ComponentArgs {
@@ -18,45 +18,7 @@ struct ComponentArgs {
 struct SerdeField {
     ident: Ident,
     ty: Type,
-    kind: SerdeFieldKind,
     span: Span,
-}
-
-enum SerdeFieldKind {
-    Direct,
-    Converted {
-        target: Type,
-        serialize_with: Expr,
-        deserialize_with: Expr,
-    },
-}
-
-struct SerdeAttrArgs {
-    target: Type,
-    serialize_with: Expr,
-    deserialize_with: Expr,
-}
-
-impl Parse for SerdeAttrArgs {
-    fn parse(input: syn::parse::ParseStream<'_>) -> Result<Self> {
-        let target = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let serialize_with = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let deserialize_with = input.parse()?;
-
-        if !input.is_empty() {
-            return Err(input.error(
-                "`#[serde(...)]` expects either `#[serde]` or `#[serde(Target, serialize_fn, deserialize_fn)]`",
-            ));
-        }
-
-        Ok(Self {
-            target,
-            serialize_with,
-            deserialize_with,
-        })
-    }
 }
 
 #[proc_macro_attribute]
@@ -165,7 +127,8 @@ fn expand_component(
     let exclusive = args.exclusive;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let jungle_core = resolve_jungle_core_path(input.span())?;
-    let serde_impl = build_component_serde_impl(&args, &input, &serde_fields);
+    let serde_impl = build_component_serde_impl(&args, &input, &serde_fields, &jungle_core);
+    let jaml_impl = build_component_jaml_impl(&args, &serde_fields, &jungle_core);
 
     Ok(quote! {
         #input
@@ -203,6 +166,8 @@ fn expand_component(
                 })
             }
 
+            #jaml_impl
+
             fn entity(&self) -> #jungle_core::ecs::entity::Entity {
                 self.entity
             }
@@ -219,14 +184,13 @@ fn collect_serde_fields(input: &mut ItemStruct) -> Result<Vec<SerdeField>> {
 
     let mut serde_fields = Vec::new();
     for field in &mut fields.named {
-        if let Some(kind) = take_component_serde_attr(field)? {
+        if take_component_serde_attr(field)? {
             serde_fields.push(SerdeField {
                 ident: field
                     .ident
                     .clone()
                     .expect("named fields were validated before collecting serde fields"),
                 ty: field.ty.clone(),
-                kind,
                 span: field.span(),
             });
         }
@@ -235,43 +199,41 @@ fn collect_serde_fields(input: &mut ItemStruct) -> Result<Vec<SerdeField>> {
     Ok(serde_fields)
 }
 
-fn take_component_serde_attr(field: &mut Field) -> Result<Option<SerdeFieldKind>> {
-    let mut serde_kind = None;
+fn take_component_serde_attr(field: &mut Field) -> Result<bool> {
+    let mut has_serde_attr = false;
     let mut retained_attrs = Vec::with_capacity(field.attrs.len());
 
     for attr in field.attrs.drain(..) {
         if attr.path().is_ident("serde") {
-            if serde_kind.is_some() {
+            if has_serde_attr {
                 return Err(syn::Error::new_spanned(
                     attr,
                     "duplicate `#[serde]` attribute; specify it only once per field",
                 ));
             }
 
-            serde_kind = Some(parse_component_serde_attr(&attr)?);
+            parse_component_serde_attr(&attr)?;
+            has_serde_attr = true;
         } else {
             retained_attrs.push(attr);
         }
     }
 
     field.attrs = retained_attrs;
-    Ok(serde_kind)
+
+    Ok(has_serde_attr)
 }
 
-fn parse_component_serde_attr(attr: &Attribute) -> Result<SerdeFieldKind> {
+fn parse_component_serde_attr(attr: &Attribute) -> Result<()> {
     match &attr.meta {
-        Meta::Path(_) => Ok(SerdeFieldKind::Direct),
-        Meta::List(_) => {
-            let args = attr.parse_args::<SerdeAttrArgs>()?;
-            Ok(SerdeFieldKind::Converted {
-                target: args.target,
-                serialize_with: args.serialize_with,
-                deserialize_with: args.deserialize_with,
-            })
-        }
+        Meta::Path(_) => Ok(()),
+        Meta::List(_) => Err(syn::Error::new_spanned(
+            attr,
+            "`#[serde]` on component fields does not take arguments; implement `ComponentSerdeField` for the field type instead",
+        )),
         Meta::NameValue(_) => Err(syn::Error::new_spanned(
             attr,
-            "`#[serde(...)]` expects either `#[serde]` or `#[serde(Target, serialize_fn, deserialize_fn)]`",
+            "`#[serde]` on component fields does not take arguments; implement `ComponentSerdeField` for the field type instead",
         )),
     }
 }
@@ -280,6 +242,7 @@ fn build_component_serde_impl(
     args: &ComponentArgs,
     input: &ItemStruct,
     serde_fields: &[SerdeField],
+    jungle_core: &proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     if args.noserde {
         return quote! {};
@@ -287,6 +250,8 @@ fn build_component_serde_impl(
 
     let ident = &input.ident;
     let helper_ident = format_ident!("__{}ComponentSerdeData", ident);
+    let serialize_wrapper_ident = format_ident!("__{}ComponentSerializeField", ident);
+    let deserialize_wrapper_ident = format_ident!("__{}ComponentDeserializeField", ident);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let deserialize_generics = add_deserialize_lifetime(&input.generics);
     let (deserialize_impl_generics, _, deserialize_where_clause) =
@@ -294,63 +259,69 @@ fn build_component_serde_impl(
 
     let helper_fields = serde_fields.iter().map(|field| {
         let ident = &field.ident;
-        let field_ty = match &field.kind {
-            SerdeFieldKind::Direct => &field.ty,
-            SerdeFieldKind::Converted { target, .. } => target,
-        };
+        let field_ty = &field.ty;
 
         quote! {
-            #ident: #field_ty,
+            #ident: #deserialize_wrapper_ident<#field_ty>,
         }
     });
 
     let serialize_fields_len = serde_fields.len();
-    let serialize_steps = serde_fields.iter().enumerate().map(|(index, field)| {
+    let serialize_steps = serde_fields.iter().map(|field| {
         let ident = &field.ident;
-        let field_ty = &field.ty;
         let field_name = ident.to_string();
 
-        match &field.kind {
-            SerdeFieldKind::Direct => quote! {
-                ::serde::ser::SerializeStruct::serialize_field(&mut state, #field_name, &self.#ident)?;
-            },
-            SerdeFieldKind::Converted {
-                target,
-                serialize_with,
-                ..
-            } => {
-                let convert_ident = format_ident!("__jungle_component_serialize_with_{index}");
-                let temp_ident = format_ident!("__jungle_component_serde_field_{index}");
-
-                quote! {
-                    let #convert_ident: &dyn Fn(&#field_ty) -> #target = &#serialize_with;
-                    let #temp_ident = #convert_ident(&self.#ident);
-                    ::serde::ser::SerializeStruct::serialize_field(&mut state, #field_name, &#temp_ident)?;
-                }
-            }
+        quote! {
+            ::serde::ser::SerializeStruct::serialize_field(
+                &mut state,
+                #field_name,
+                &#serialize_wrapper_ident(&self.#ident),
+            )?;
         }
     });
 
     let deserialize_steps = serde_fields.iter().map(|field| {
         let ident = &field.ident;
-        let field_ty = &field.ty;
 
-        match &field.kind {
-            SerdeFieldKind::Direct => quote! {
-                component.#ident = data.#ident;
-            },
-            SerdeFieldKind::Converted {
-                target,
-                deserialize_with,
-                ..
-            } => quote! {
-                let deserialize_with: &dyn Fn(&#target) -> #field_ty = &#deserialize_with;
-                component.#ident = deserialize_with(&data.#ident);
-            },
+        quote! {
+            component.#ident = data.#ident.0;
         }
     });
 
     quote! {
+        struct #serialize_wrapper_ident<'__a, T>(&'__a T);
+
+        impl<'__a, T> ::serde::Serialize for #serialize_wrapper_ident<'__a, T>
+        where
+            T: #jungle_core::ecs::components::ComponentSerializeField,
+        {
+            fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                <T as #jungle_core::ecs::components::ComponentSerializeField>::serialize_field(
+                    self.0,
+                    serializer,
+                )
+            }
+        }
+
+        struct #deserialize_wrapper_ident<T>(T);
+
+        impl<'__de, T> ::serde::Deserialize<'__de> for #deserialize_wrapper_ident<T>
+        where
+            T: #jungle_core::ecs::components::ComponentDeserializeField<'__de>,
+        {
+            fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+            where
+                D: ::serde::Deserializer<'__de>,
+            {
+                Ok(Self(
+                    <T as #jungle_core::ecs::components::ComponentDeserializeField<'__de>>::deserialize_field(deserializer)?,
+                ))
+            }
+        }
+
         #[derive(serde::Deserialize)]
         struct #helper_ident #impl_generics #where_clause {
             #(#helper_fields)*
@@ -384,6 +355,63 @@ fn build_component_serde_impl(
                 #(#serialize_steps)*
                 ::serde::ser::SerializeStruct::end(state)
             }
+        }
+    }
+}
+
+fn build_component_jaml_impl(
+    args: &ComponentArgs,
+    serde_fields: &[SerdeField],
+    jungle_core: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    if args.noserde {
+        return quote! {
+            fn from_jaml(_jaml: #jungle_core::asset::entity_tree::JamlComponent) -> ::std::option::Option<Self> {
+                ::std::option::Option::None
+            }
+
+            fn to_jaml(&self) -> ::std::option::Option<#jungle_core::asset::entity_tree::JamlComponent> {
+                ::std::option::Option::None
+            }
+        };
+    }
+
+    let serialize_steps = serde_fields.iter().map(|field| {
+        let ident = &field.ident;
+        let field_name = ident.to_string();
+        let field_ty = &field.ty;
+
+        quote! {
+            jaml.insert(
+                ::std::string::String::from(#field_name),
+                <#field_ty as #jungle_core::ecs::components::ComponentSerdeField>::to_jaml(&self.#ident),
+            );
+        }
+    });
+
+    let deserialize_steps = serde_fields.iter().map(|field| {
+        let ident = &field.ident;
+        let field_ty = &field.ty;
+        let field_name = ident.to_string();
+
+        quote! {
+            component.#ident = <#field_ty as #jungle_core::ecs::components::ComponentSerdeField>::from_jaml(
+                jaml.get(#field_name)?.as_str(),
+            )?;
+        }
+    });
+
+    quote! {
+        fn from_jaml(jaml: #jungle_core::asset::entity_tree::JamlComponent) -> ::std::option::Option<Self> {
+            let mut component = Self::default();
+            #(#deserialize_steps)*
+            ::std::option::Option::Some(component)
+        }
+
+        fn to_jaml(&self) -> ::std::option::Option<#jungle_core::asset::entity_tree::JamlComponent> {
+            let mut jaml = #jungle_core::asset::entity_tree::JamlComponent::new();
+            #(#serialize_steps)*
+            ::std::option::Option::Some(jaml)
         }
     }
 }

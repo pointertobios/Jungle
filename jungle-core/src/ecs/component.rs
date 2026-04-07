@@ -5,10 +5,12 @@ use std::{
 
 use async_trait::async_trait;
 use blake3::hash;
+use bytes::Bytes;
 use itertools::Either;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::ecs::entity::Entity;
+use crate::{asset::entity_tree::JamlComponent, ecs::entity::Entity};
 
 pub type ComponentId = u128; // 组件类型 ID，使用组件类型名称的 blake3 哈希值的前 16 字节
 
@@ -25,6 +27,28 @@ pub trait Component: 'static + Default + Sized + Send + Sync + ComponentExt {
     }
 
     fn type_name() -> &'static str;
+
+    fn from_bytes(b: Bytes) -> bincode::Result<Self>
+    where
+        Self: Sized + for<'de> Deserialize<'de>,
+    {
+        bincode::deserialize(&b)
+    }
+
+    fn to_bytes(&self) -> bincode::Result<Bytes>
+    where
+        Self: Sized + Serialize,
+    {
+        bincode::serialize(self).map(Bytes::from)
+    }
+
+    fn from_jaml(_jaml: JamlComponent) -> Option<Self> {
+        None
+    }
+
+    fn to_jaml(&self) -> Option<JamlComponent> {
+        None
+    }
 
     fn as_any(&self) -> &dyn Any {
         self
@@ -408,10 +432,10 @@ impl<C: Component> ComponentStorage<C> for ContinuousComponentStorage<C> {
 
 #[cfg(test)]
 mod tests {
-    use std::{fmt, sync::Mutex};
+    use std::fmt;
 
     use serde::{
-        Serialize,
+        Deserialize, Serialize,
         ser::{Impossible, SerializeStruct, Serializer},
     };
 
@@ -419,7 +443,74 @@ mod tests {
         Component, ComponentExt, ComponentManagerImpl, ContinuousComponentStorage,
         SparseComponentStorage,
     };
-    use crate::{ecs::entity::Entity, macros::component};
+    use crate::{
+        ecs::{
+            components::{ComponentDeserializeField, ComponentSerdeField, ComponentSerializeField},
+            entity::Entity,
+        },
+        macros::component,
+    };
+
+    impl ComponentSerializeField for String {
+        fn serialize_field<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            self.serialize(serializer)
+        }
+    }
+
+    impl<'de> ComponentDeserializeField<'de> for String {
+        fn deserialize_field<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            Self: Sized,
+            D: serde::Deserializer<'de>,
+        {
+            String::deserialize(deserializer)
+        }
+    }
+
+    impl ComponentSerdeField for String {
+        fn from_jaml(jaml: &str) -> Option<Self> {
+            Some(jaml.to_string())
+        }
+
+        fn to_jaml(&self) -> String {
+            self.clone()
+        }
+    }
+
+    #[derive(Debug, Default, PartialEq, Eq)]
+    struct CounterValue(u32);
+
+    impl ComponentSerializeField for CounterValue {
+        fn serialize_field<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            self.0.serialize(serializer)
+        }
+    }
+
+    impl<'de> ComponentDeserializeField<'de> for CounterValue {
+        fn deserialize_field<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            Self: Sized,
+            D: serde::Deserializer<'de>,
+        {
+            Ok(Self(u32::deserialize(deserializer)?))
+        }
+    }
+
+    impl ComponentSerdeField for CounterValue {
+        fn from_jaml(jaml: &str) -> Option<Self> {
+            Some(Self(jaml.parse::<u32>().ok()?))
+        }
+
+        fn to_jaml(&self) -> String {
+            self.0.to_string()
+        }
+    }
 
     #[derive(Debug, PartialEq)]
     enum SerializedFieldValue {
@@ -996,8 +1087,8 @@ mod tests {
         entity: Entity,
         #[serde]
         name: String,
-        #[serde(u32, |value| *value.lock().unwrap(), |value| Mutex::new(*value))]
-        counter: Mutex<u32>,
+        #[serde]
+        counter: CounterValue,
         cache: u32,
     }
 
@@ -1006,7 +1097,7 @@ mod tests {
             self.entity == other.entity
                 && self.name == other.name
                 && self.cache == other.cache
-                && *self.counter.lock().unwrap() == *other.counter.lock().unwrap()
+                && self.counter == other.counter
         }
     }
 
@@ -1015,7 +1106,7 @@ mod tests {
             Self {
                 entity: Entity::default(),
                 name: String::new(),
-                counter: Mutex::new(0),
+                counter: CounterValue::default(),
                 cache: 99,
             }
         }
@@ -1074,7 +1165,7 @@ mod tests {
         let component = SerializableComponent {
             entity: Entity::default(),
             name: "player".to_string(),
-            counter: Mutex::new(7),
+            counter: CounterValue(7),
             cache: 99,
         };
 
@@ -1098,5 +1189,30 @@ mod tests {
             bincode::deserialize(&bytes).expect("bincode deserialization should succeed");
 
         assert_eq!(restored, component);
+    }
+
+    #[test]
+    fn component_macro_converts_marked_fields_to_and_from_jaml() {
+        let component = SerializableComponent {
+            entity: Entity::default(),
+            name: "player".to_string(),
+            counter: CounterValue(7),
+            cache: 123,
+        };
+
+        let jaml = component
+            .to_jaml()
+            .expect("component jaml serialization should succeed");
+
+        assert_eq!(jaml.get("name"), Some(&"player".to_string()));
+        assert_eq!(jaml.get("counter"), Some(&"7".to_string()));
+        assert_eq!(jaml.len(), 2);
+
+        let restored = SerializableComponent::from_jaml(jaml)
+            .expect("component jaml deserialization should succeed");
+
+        assert_eq!(restored.name, "player");
+        assert_eq!(restored.counter, CounterValue(7));
+        assert_eq!(restored.cache, 99);
     }
 }

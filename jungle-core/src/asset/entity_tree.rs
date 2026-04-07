@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bytes::Bytes;
 
 use crate::{asset::env::AssetEnv, ecs::component::ComponentId};
@@ -33,3 +35,5 @@ pub struct TagPrefab {
 }
 
 pub struct ComponentData(Bytes);
+
+pub type JamlComponent = HashMap<String, String>;
