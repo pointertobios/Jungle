@@ -1,2 +1,2 @@
 [base]
-initial-scene = "scene/initial.scene.jaml"
+initial-scene = "scenes/initial.scene.jaml"

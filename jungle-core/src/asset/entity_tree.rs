@@ -76,6 +76,27 @@ impl ComponentData {
         Ok(Self(bytes))
     }
 
+    pub fn build_component(
+        &self,
+        game: &impl Game,
+        component_id: ComponentId,
+    ) -> Result<Box<dyn std::any::Any + Send>> {
+        let serdeh = game
+            .get_serdehelpers()
+            .get(&component_id)
+            .ok_or_else(|| anyhow!("component id {} is not registered in game", component_id))?;
+
+        serdeh
+            .build_component_from_bytes(self.0.clone())
+            .ok_or_else(|| {
+                anyhow!(
+                    "component id {} does not support runtime deserialization",
+                    component_id
+                )
+            })?
+            .map_err(anyhow::Error::from)
+    }
+
     fn to_jaml(&self, game: &impl Game, component_id: ComponentId) -> Result<JamlComponent> {
         let serdeh = game
             .get_serdehelpers()
@@ -107,7 +128,7 @@ impl EntityTree {
                     return Self::read_from_empty(game, start);
                 }
                 Event::Decl(_) | Event::PI(_) | Event::DocType(_) | Event::Comment(_) => {}
-                Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
+                Event::Text(text) if is_xml_whitespace(text.as_ref()) => {}
                 Event::Eof => bail!("empty JAML document"),
                 event => bail!("unexpected top-level JAML event: {event:?}"),
             }
@@ -208,7 +229,7 @@ impl TagEntity {
                     ),
                 },
                 Event::End(end) if end.name() == start.name() => return Ok(entity),
-                Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
+                Event::Text(text) if is_xml_whitespace(text.as_ref()) => {}
                 Event::Comment(_) => {}
                 Event::Eof => bail!("unexpected EOF while parsing <entity>"),
                 event => bail!("unexpected event inside <entity>: {event:?}"),
@@ -397,7 +418,7 @@ fn read_subentities(game: &impl Game, reader: &mut Reader<&[u8]>) -> Result<Vec<
                 subentities.push(EntityTree::read_from_empty(game, start)?);
             }
             Event::End(end) if end.name().as_ref() == b"subentity" => return Ok(subentities),
-            Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
+            Event::Text(text) if is_xml_whitespace(text.as_ref()) => {}
             Event::Comment(_) => {}
             Event::Eof => bail!("unexpected EOF while parsing <subentity>"),
             event => bail!("unexpected event inside <subentity>: {event:?}"),
@@ -429,7 +450,7 @@ fn read_component_jaml(
                 component_jaml.insert(field_name, String::new());
             }
             Event::End(end) if end.name() == component_tag.name() => return Ok(component_jaml),
-            Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
+            Event::Text(text) if is_xml_whitespace(text.as_ref()) => {}
             Event::Comment(_) => {}
             Event::Eof => bail!("unexpected EOF while parsing <component>"),
             event => bail!("unexpected event inside <component>: {event:?}"),
@@ -493,6 +514,11 @@ fn decode_tag_name(name: QName<'_>) -> Result<String> {
     std::str::from_utf8(name.as_ref())
         .map(str::to_owned)
         .context("failed to decode XML tag name")
+}
+
+fn is_xml_whitespace(text: &[u8]) -> bool {
+    text.iter()
+        .all(|byte| matches!(byte, b' ' | b'\n' | b'\r' | b'\t'))
 }
 
 fn parse_env(start: &BytesStart<'_>) -> Result<AssetEnv> {
