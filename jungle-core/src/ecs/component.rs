@@ -1,8 +1,10 @@
 use std::{
     any::{Any, TypeId},
     collections::{HashMap, HashSet},
+    marker::PhantomData,
 };
 
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use blake3::hash;
 use bytes::Bytes;
@@ -88,6 +90,23 @@ pub trait ComponentManager {
     fn get_components_mut(&mut self) -> Box<dyn Iterator<Item = (Entity, &mut dyn Any)> + '_>;
 }
 
+pub trait ComponentSerdeHelper {
+    fn build_component_from_bytes(
+        &self,
+        _bytes: Bytes,
+    ) -> Option<bincode::Result<Box<dyn Any + Send>>> {
+        None
+    }
+
+    fn build_component_data_from_jaml(&self, _jaml: JamlComponent) -> Option<Result<Bytes>> {
+        None
+    }
+
+    fn build_jaml_from_component_data(&self, _bytes: &Bytes) -> Option<Result<JamlComponent>> {
+        None
+    }
+}
+
 pub struct ComponentManagerImpl<C: Component> {
     storage: C::Storage,
     add_channel: (Sender<(Entity, C)>, Receiver<(Entity, C)>),
@@ -121,6 +140,40 @@ impl<C: Component> ComponentManagerImpl<C> {
 impl<C: Component> Default for ComponentManagerImpl<C> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub struct ComponentSerdeHelperImpl<C: Component>(pub PhantomData<C>);
+
+impl<C: Component + Serialize + for<'de> Deserialize<'de>> ComponentSerdeHelper
+    for ComponentSerdeHelperImpl<C>
+{
+    fn build_component_from_bytes(
+        &self,
+        bytes: Bytes,
+    ) -> Option<bincode::Result<Box<dyn Any + Send>>> {
+        Some(C::from_bytes(bytes).map(|component| Box::new(component) as Box<dyn Any + Send>))
+    }
+
+    fn build_component_data_from_jaml(&self, jaml: JamlComponent) -> Option<Result<Bytes>> {
+        let component = C::from_jaml(jaml)?;
+        Some(
+            bincode::serialize(&component)
+                .map(Bytes::from)
+                .map_err(anyhow::Error::from),
+        )
+    }
+
+    fn build_jaml_from_component_data(&self, bytes: &Bytes) -> Option<Result<JamlComponent>> {
+        Some(
+            bincode::deserialize::<C>(bytes)
+                .map_err(anyhow::Error::from)
+                .and_then(|component| {
+                    component
+                        .to_jaml()
+                        .ok_or_else(|| anyhow!("Component does not support JAML serialization"))
+                }),
+        )
     }
 }
 

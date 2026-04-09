@@ -1,28 +1,42 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, marker::PhantomData, time::Duration};
 
+use serde::{Deserialize, Serialize};
 use tokio::{
     runtime::{self, Runtime},
     time::interval,
 };
 
 use crate::ecs::{
-    component::{Component, ComponentId, ComponentManager, ComponentManagerImpl},
-    components::{node::Node, prefab_ref::PrefabRef},
+    component::{
+        Component, ComponentId, ComponentManager, ComponentManagerImpl, ComponentSerdeHelper,
+        ComponentSerdeHelperImpl,
+    },
+    components::{node::Node, prefab_ref::PrefabRef, transform::Transform},
 };
 
 pub trait Game {
     fn run(self) -> anyhow::Result<()>;
 
+    fn get_serdehelpers(&self) -> &HashMap<ComponentId, Box<dyn ComponentSerdeHelper>>;
+    fn get_serdehelpers_mut(&mut self) -> &mut HashMap<ComponentId, Box<dyn ComponentSerdeHelper>>;
     fn get_managers(&self) -> &HashMap<ComponentId, Box<dyn ComponentManager>>;
     fn get_managers_mut(&mut self) -> &mut HashMap<ComponentId, Box<dyn ComponentManager>>;
     fn get_name_to_type(&self) -> &HashMap<String, ComponentId>;
     fn get_name_to_type_mut(&mut self) -> &mut HashMap<String, ComponentId>;
 
-    fn register_manager<C: Component>(&mut self) {
+    fn register_manager_noserde<C: Component>(&mut self) {
         self.get_name_to_type_mut()
             .insert(C::type_name().to_string(), C::id());
         self.get_managers_mut()
             .insert(C::id(), Box::new(ComponentManagerImpl::<C>::new()));
+    }
+
+    fn register_manager<C: Component + Serialize + for<'de> Deserialize<'de>>(&mut self) {
+        self.register_manager_noserde::<C>();
+        self.get_serdehelpers_mut().insert(
+            C::id(),
+            Box::new(ComponentSerdeHelperImpl::<C>(PhantomData)) as Box<dyn ComponentSerdeHelper>,
+        );
     }
 
     fn get_manager<C: Component>(&self) -> Option<&ComponentManagerImpl<C>> {
@@ -66,6 +80,7 @@ pub trait Game {
 }
 
 pub struct GameCore {
+    serdehelpers: HashMap<ComponentId, Box<dyn ComponentSerdeHelper>>,
     managers: HashMap<ComponentId, Box<dyn ComponentManager>>,
     name_to_type: HashMap<String, ComponentId>,
 
@@ -77,6 +92,7 @@ pub struct GameCore {
 impl GameCore {
     pub fn new(game_tick: Duration) -> Self {
         let mut res = Self {
+            serdehelpers: HashMap::new(),
             managers: HashMap::new(),
             name_to_type: HashMap::new(),
             game_tick,
@@ -85,8 +101,9 @@ impl GameCore {
                 .build()
                 .unwrap(),
         };
-        res.register_manager::<Node>();
-        res.register_manager::<PrefabRef>();
+        res.register_manager_noserde::<Node>();
+        res.register_manager_noserde::<PrefabRef>();
+        res.register_manager::<Transform>();
         res
     }
 }
@@ -99,6 +116,14 @@ impl Game for GameCore {
                 itv.tick().await;
             }
         })
+    }
+
+    fn get_serdehelpers(&self) -> &HashMap<ComponentId, Box<dyn ComponentSerdeHelper>> {
+        &self.serdehelpers
+    }
+
+    fn get_serdehelpers_mut(&mut self) -> &mut HashMap<ComponentId, Box<dyn ComponentSerdeHelper>> {
+        &mut self.serdehelpers
     }
 
     fn get_managers(&self) -> &HashMap<ComponentId, Box<dyn ComponentManager>> {

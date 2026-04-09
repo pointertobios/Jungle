@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserializer, Serializer};
 
 pub mod node;
 pub mod prefab_ref;
@@ -14,7 +14,7 @@ pub trait ComponentDeserializeField<'de> {
     fn deserialize_field<D>(deserializer: D) -> Result<Self, D::Error>
     where
         Self: Sized,
-        D: serde::Deserializer<'de>;
+        D: Deserializer<'de>;
 }
 
 pub trait ComponentSerdeField:
