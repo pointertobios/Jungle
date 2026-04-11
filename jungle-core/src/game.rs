@@ -1,17 +1,22 @@
-use std::{collections::HashMap, marker::PhantomData, time::Duration};
+use std::{collections::HashMap, marker::PhantomData, path::PathBuf, sync::Arc, time::Duration};
 
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tokio::{
     runtime::{self, Runtime},
     time::interval,
 };
 
-use crate::ecs::{
-    component::{
-        Component, ComponentId, ComponentManager, ComponentManagerImpl, ComponentSerdeHelper,
-        ComponentSerdeHelperImpl,
+use crate::{
+    asset::{AssetManager, AssetPackage},
+    ecs::{
+        component::{
+            Component, ComponentId, ComponentManager, ComponentManagerImpl, ComponentSerdeHelper,
+            ComponentSerdeHelperImpl,
+        },
+        components::{node::Node, prefab_ref::PrefabRef, transform::Transform},
     },
-    components::{node::Node, prefab_ref::PrefabRef, transform::Transform},
+    project::Project,
 };
 
 pub trait Game {
@@ -79,10 +84,26 @@ pub trait Game {
     }
 }
 
+pub struct CoreConfig {
+    pub project_dir: PathBuf,
+    pub game_tick: Duration,
+}
+
+impl Default for CoreConfig {
+    fn default() -> Self {
+        Self {
+            project_dir: PathBuf::from("."),
+            game_tick: Duration::from_millis(10),
+        }
+    }
+}
+
 pub struct GameCore {
     serdehelpers: HashMap<ComponentId, Box<dyn ComponentSerdeHelper>>,
     managers: HashMap<ComponentId, Box<dyn ComponentManager>>,
     name_to_type: HashMap<String, ComponentId>,
+
+    project_dir: PathBuf,
 
     game_tick: Duration,
 
@@ -90,12 +111,13 @@ pub struct GameCore {
 }
 
 impl GameCore {
-    pub fn new(game_tick: Duration) -> Self {
+    pub fn new(config: CoreConfig) -> Self {
         let mut res = Self {
             serdehelpers: HashMap::new(),
             managers: HashMap::new(),
             name_to_type: HashMap::new(),
-            game_tick,
+            project_dir: config.project_dir,
+            game_tick: config.game_tick,
             tokio_runtime: runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
@@ -109,13 +131,39 @@ impl GameCore {
 }
 
 impl Game for GameCore {
-    fn run(self) -> anyhow::Result<()> {
-        self.tokio_runtime.block_on(async {
-            let mut itv = interval(self.game_tick);
+    fn run(self) -> Result<()> {
+        let game_tick = self.game_tick;
+        let (project, asset_manager) = self.tokio_runtime.block_on(async {
+            let project = Project::from(&self.project_dir).await.with_context(|| {
+                format!(
+                    "failed to load project from {}",
+                    self.project_dir.clone().display()
+                )
+            })?;
+            let asset_manager = Arc::new(
+                AssetManager::new(AssetPackage::FileSystem(
+                    self.project_dir.join(project.assets.clone()),
+                ))
+                .await
+                .with_context(|| {
+                    format!(
+                        "failed to initialize asset manager with asset root {}",
+                        project.assets.display()
+                    )
+                })?,
+            );
+            Result::<(Project, Arc<AssetManager>)>::Ok((project, asset_manager))
+        })?;
+
+        println!("{:#?}", *asset_manager);
+
+        let hdl = self.tokio_runtime.spawn(async move {
+            let mut itv = interval(game_tick);
             loop {
                 itv.tick().await;
             }
-        })
+        });
+        self.tokio_runtime.block_on(async { hdl.await? })
     }
 
     fn get_serdehelpers(&self) -> &HashMap<ComponentId, Box<dyn ComponentSerdeHelper>> {
