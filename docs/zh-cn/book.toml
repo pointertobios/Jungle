@@ -1,0 +1,11 @@
+[book]
+authors = ["pointertobios"]
+language = "zh"
+src = "src"
+title = "Jungle 引擎"
+
+[output.html]
+smart-punctuation = true
+mathjax-support = true
+git-repository-url = "https://gitlab.suthby.org/infrastructurepack/jungle"
+hash-files = true
