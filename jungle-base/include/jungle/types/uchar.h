@@ -100,6 +100,14 @@ public:
         check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
     }
 
+    template<std::ranges::input_range R>
+        requires std::convertible_to<std::ranges::range_value_t<R>, const char>
+    constexpr ustr(R &&range) {
+        for (const auto &ch : range) {
+            push(ch);
+        }
+    }
+
     constexpr std::string_view view() const noexcept { return m_storage; }
 
     std::vector<uchar> to_uchars() const;

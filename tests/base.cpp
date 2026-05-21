@@ -3,31 +3,48 @@
 #include "jungle/core/ecs/entity.h"
 #include "jungle/preusing.h"
 
+using namespace jungle;
+
 enum class Color { Red, Green, Blue };
+
+struct T {
+    core::ecs::Entity e;
+};
 
 struct S {
     int x, y;
     Color color;
-    jungle::core::ecs::Entity e;
+    core::ecs::Entity e;
 
     static constexpr usize cl_integer = 100;
 
     using member_type = int;
 
+    S(int x, int y, Color color, core::ecs::Entity e, T t, int priv)
+            : x(x)
+            , y(y)
+            , color(color)
+            , e(e)
+            , t(t)
+            , priv(priv) {}
+
 private:
-    friend struct jungle::core::ecs::Entity;
+    friend struct core::ecs::Entity;
 
     void foo() {}
+
+    T t;
+    int priv;
 };
 
-using namespace jungle::literals;
+using namespace literals;
 
 int main() {
-    using jungle::core::ecs::Entity;
+    using core::ecs::Entity;
     Entity entity{0x123456789abcdef0};
     auto c = Color::Green;
-    auto s = S{42, 24, c, entity};
+    auto s = S{42, 24, c, entity, T{Entity{0x123456789abcdef1}}, 0};
     std::vector l{Color::Red, Color::Green, Color::Blue};
-    std::println("{}", jungle::debug_of(entity));
-    std::println("{}", jungle::debug_of(s));
+    std::println("{}", debug(entity));
+    std::println("{}", debug(s));
 }
