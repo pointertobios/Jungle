@@ -31,11 +31,17 @@ private:
     u64 m_id{INVALID};
 };
 
+enum class ComponentStorage final {
+    Dense,
+    Sparse,
+};
+
 template<typename...>
 class Component;
 
 template<typename C>
-concept ComponentType = std::derived_from<C, Component<C>> && !std::is_same_v<C, Component<C>>;
+concept ComponentImpl = std::derived_from<C, Component<C>> && !std::is_same_v<C, Component<C>>
+                        && std::same_as<decltype(C::StorageType), ComponentStorage>;
 
 template<>
 class Component<> {
@@ -43,18 +49,17 @@ public:
     Component() = delete;
     Component(const Component &) = delete;
     Component &operator=(const Component &) = delete;
+    Component(Component &&) = delete;
     Component &operator=(Component &&) = delete;
 
-    Component(Component &&) noexcept = default;
-
-    template<ComponentType C>
+    template<ComponentImpl C>
     constexpr bool is() const noexcept {
         return m_type == type_id::of<C>();
     }
 
     constexpr bool is(type_id type) const noexcept { return m_type == type; }
 
-    template<ComponentType C>
+    template<ComponentImpl C>
     constexpr const C &as() const noexcept {
         if (!is<C>()) [[unlikely]] {
             panic("Component type mismatch: expected {}, got {}", type_id::of<C>().name(), m_type.name());
@@ -62,7 +67,7 @@ public:
         return static_cast<const C &>(*this);
     }
 
-    template<ComponentType C>
+    template<ComponentImpl C>
     constexpr const C *try_as() const noexcept {
         return is<C>() ? &static_cast<const C &>(*this) : nullptr;
     }
@@ -78,8 +83,7 @@ private:
     const ComponentID m_id;
 };
 
-template<typename C>
-    requires(!std::derived_from<C, Component<C>>)
+template<ComponentImpl C>
 class Component<C> : public Component<> {
 public:
     Component(const Component &) = delete;
