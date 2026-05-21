@@ -20,11 +20,11 @@ namespace fmt {
 
 template<typename Arg>
 using format_arg_t =
-    std::conditional_t<concepts::DebugType<std::remove_cvref_t<Arg>>, ustr, std::remove_cvref_t<Arg>>;
+    std::conditional_t<concepts::Debug<std::remove_cvref_t<Arg>>, ustr, std::remove_cvref_t<Arg>>;
 
 template<typename Arg>
 static constexpr decltype(auto) normalize_format_arg(Arg &&arg) {
-    if constexpr (concepts::DebugType<std::remove_cvref_t<Arg>>) {
+    if constexpr (concepts::Debug<std::remove_cvref_t<Arg>>) {
         return arg.debug();
     } else {
         return std::forward<Arg>(arg);
@@ -131,8 +131,7 @@ public:
      */
     template<typename... Args>
     static ustr format(std::format_string<fmt::format_arg_t<Args>...> fmt, Args &&...args) {
-        return ustr{std::vformat(
-            fmt.get(), std::make_format_args(fmt::normalize_format_arg(std::forward<Args>(args))...))};
+        return ustr{std::vformat(fmt.get(), std::make_format_args(fmt::normalize_format_arg(args)...))};
     }
 
 private:
@@ -143,19 +142,41 @@ private:
     std::string m_storage;
 };
 
+namespace literals {
+
+inline ustr operator"" _u(const char *str, std::size_t len) { return ustr{std::string_view{str, len}}; }
+
+};  // namespace literals
+
 };  // namespace jungle
 
 template<>
 struct std::formatter<jungle::uchar> : std::formatter<std::string_view> {
-    auto format(const jungle::uchar &ch, std::format_context &ctx) const -> std::format_context::iterator;
+    auto format(const jungle::uchar &ch, auto &ctx) const {
+        const auto utf8 = ch.to_utf8();
+
+        jungle::usize length = 0;
+        while (length < utf8.size() && utf8[length] != 0) {
+            ++length;
+        }
+
+        std::array<char, 4> buffer{};
+        for (jungle::usize i = 0; i < length; ++i) {
+            buffer[i] = utf8[i];
+        }
+
+        return std::formatter<std::string_view>::format(std::string_view(buffer.data(), length), ctx);
+    }
 };
 
 template<>
 struct std::formatter<jungle::ustr> : std::formatter<std::string_view> {
-    auto format(const jungle::ustr &str, std::format_context &ctx) const -> std::format_context::iterator;
+    auto format(const jungle::ustr &str, auto &ctx) const {
+        return std::formatter<std::string_view>::format(str.m_storage, ctx);
+    }
 };
 
-template<jungle::concepts::DebugType T>
+template<jungle::concepts::Debug T>
 struct std::formatter<T> : std::formatter<jungle::ustr> {
     auto format(const T &value, auto &ctx) const {
         return std::formatter<jungle::ustr>::format(value.debug(), ctx);

@@ -11,7 +11,7 @@ class ustr;
 namespace jungle::concepts {
 
 template<typename T>
-concept DebugType = requires(T t) {
+concept Debug = requires(T t) {
     { t.debug() } -> std::same_as<ustr>;
 };
 

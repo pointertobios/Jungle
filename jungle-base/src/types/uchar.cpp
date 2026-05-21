@@ -196,25 +196,3 @@ void ustr::check_valid(std::span<const i8> utf8) {
 }
 
 };  // namespace jungle
-
-auto std::formatter<jungle::uchar>::format(const jungle::uchar &ch, format_context &ctx) const
-    -> format_context::iterator {
-    const auto utf8 = ch.to_utf8();
-
-    jungle::usize length = 0;
-    while (length < utf8.size() && utf8[length] != 0) {
-        ++length;
-    }
-
-    std::array<char, 4> buffer{};
-    for (jungle::usize i = 0; i < length; ++i) {
-        buffer[i] = utf8[i];
-    }
-
-    return formatter<string_view>::format(string_view(buffer.data(), length), ctx);
-}
-
-auto std::formatter<jungle::ustr>::format(const jungle::ustr &str, format_context &ctx) const
-    -> format_context::iterator {
-    return formatter<string_view>::format(str.m_storage, ctx);
-}

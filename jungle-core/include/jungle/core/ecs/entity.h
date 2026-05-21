@@ -8,7 +8,7 @@
 
 namespace jungle::core::ecs {
 
-struct [[=Debug]] Entity final {
+struct Entity final {
   friend struct std::hash<Entity>;
 
   static constexpr u64 INVALID = 0;

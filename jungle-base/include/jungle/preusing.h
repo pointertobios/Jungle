@@ -3,7 +3,7 @@
 #include "jungle/types/int.h"    // IWYU pragma: keep
 #include "jungle/types/uchar.h"  // IWYU pragma: keep
 #include "jungle/util/murmur.h"
-#include "jungle/util/type_id.h"  // IWYU pragma: keep
+#include "jungle/util/type_id.h"
 
 namespace jungle {
 
