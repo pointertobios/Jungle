@@ -51,7 +51,12 @@ ustr debug(T &&value, bool indent_first_line = false, usize level = 0) {
         } else if constexpr (std::is_class_v<raw_type>) {
             constexpr auto ctx = meta::access_context::unchecked();
 
-            res.append(ustr::format("{}{} {{\n", first_line_indent, meta::identifier_of(value_type)));
+            if constexpr (meta::has_identifier(value_type)) {
+                res.append(ustr::format("{}{} {{\n", first_line_indent, meta::identifier_of(value_type)));
+            } else {
+                res.append(ustr::format("{}<unnamed struct> {{\n", first_line_indent));
+            }
+
             template for (constexpr auto m : std::define_static_array(meta::members_of(value_type, ctx))) {
                 if constexpr (meta::is_nonstatic_data_member(m)) {
                     res.append(

@@ -20,6 +20,9 @@ struct S {
 
     using member_type = int;
 
+    struct {
+    } anonymous_struct{};
+
     S(int x, int y, Color color, core::ecs::Entity e, T t, int priv)
             : x(x)
             , y(y)

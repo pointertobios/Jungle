@@ -19,8 +19,16 @@ set(JUNGLE_SOURCES
     src/panic.cpp
 )
 
+set(JUNGLE_OPTIONS
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Werror
+)
+
 add_library(jungle-base ${JUNGLE_SOURCES})
 target_link_libraries(jungle-base PUBLIC stdc++exp)
 target_include_directories(jungle-base PUBLIC include)
 target_precompile_headers(jungle-base PUBLIC ${JUNGLE_HEADERS})
+target_compile_options(jungle-base PUBLIC ${JUNGLE_OPTIONS})
 add_library(jungle::base ALIAS jungle-base)

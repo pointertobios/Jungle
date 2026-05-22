@@ -1,8 +1,9 @@
 #pragma once
 
 #include "jungle/core/ecs/component.h"
+#include "jungle/core/ecs/entity.h"
 
-namespace jungle::ecs {
+namespace jungle::core::ecs {
 
 template<typename...>
 class Manager;
@@ -13,4 +14,4 @@ public:
 private:
 };
 
-};  // namespace jungle::ecs
+};  // namespace jungle::core::ecs

@@ -3,6 +3,7 @@
 #include <concepts>
 #include <functional>
 
+#include "jungle/core/ecs/entity.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
 
@@ -31,17 +32,11 @@ private:
     u64 m_id{INVALID};
 };
 
-enum class ComponentStorage final {
-    Dense,
-    Sparse,
-};
-
-template<typename...>
+template<typename = void>
 class Component;
 
 template<typename C>
-concept ComponentImpl = std::derived_from<C, Component<C>> && !std::is_same_v<C, Component<C>>
-                        && std::same_as<decltype(C::StorageType), ComponentStorage>;
+concept ComponentImpl = std::derived_from<C, Component<C>> && !std::is_same_v<C, Component<C>>;
 
 template<>
 class Component<> {
@@ -49,8 +44,9 @@ public:
     Component() = delete;
     Component(const Component &) = delete;
     Component &operator=(const Component &) = delete;
-    Component(Component &&) = delete;
     Component &operator=(Component &&) = delete;
+
+    Component(Component &&) noexcept = default;
 
     template<ComponentImpl C>
     constexpr bool is() const noexcept {
@@ -74,13 +70,18 @@ public:
 
     constexpr type_id type() const noexcept { return m_type; }
 
+    constexpr Entity owner_entity() const noexcept { return m_entity; }
+
 protected:
-    constexpr Component(type_id type) noexcept
-            : m_type{type} {}
+    constexpr Component(type_id type, Entity entity) noexcept
+            : m_type{type}
+            , m_entity{entity} {}
 
 private:
     const type_id m_type;
     const ComponentID m_id;
+
+    const Entity m_entity;
 };
 
 template<ComponentImpl C>
@@ -93,8 +94,8 @@ public:
     Component(Component &&) noexcept = default;
 
 protected:
-    constexpr Component()
-            : Component<>{type_id::of<C>()} {}
+    constexpr Component(Entity entity) noexcept
+            : Component<>{type_id::of<C>(), entity} {}
 
 private:
 };
