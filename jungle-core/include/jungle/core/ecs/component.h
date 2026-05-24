@@ -9,11 +9,12 @@
 
 namespace jungle::core::ecs {
 
-struct ComponentID {
+class ComponentID {
     friend struct std::hash<ComponentID>;
 
     static constexpr u64 INVALID = 0;
 
+public:
     constexpr ComponentID() noexcept = default;
     constexpr ComponentID(const ComponentID &) noexcept = default;
     constexpr ComponentID &operator=(const ComponentID &) noexcept = default;
@@ -28,6 +29,8 @@ struct ComponentID {
 
     ustr debug() const;
 
+    u64 underlying() const pre(m_id != INVALID) { return m_id; }
+
 private:
     u64 m_id{INVALID};
 };
@@ -35,8 +38,16 @@ private:
 template<typename = void>
 class Component;
 
+template<typename, typename>
+class ComponentStorage;
+
 template<typename C>
-concept ComponentImpl = std::derived_from<C, Component<C>> && !std::is_same_v<C, Component<C>>;
+concept ComponentImpl = requires {
+    std::derived_from<C, Component<C>>;
+    !std::is_same_v<C, Component<C>>;
+    typename C::Storage;
+    std::derived_from<typename C::Storage, ComponentStorage<C, typename C::Storage>>;
+};
 
 template<>
 class Component<> {
@@ -56,10 +67,7 @@ public:
     constexpr bool is(type_id type) const noexcept { return m_type == type; }
 
     template<ComponentImpl C>
-    constexpr const C &as() const noexcept {
-        if (!is<C>()) [[unlikely]] {
-            panic("Component type mismatch: expected {}, got {}", type_id::of<C>().name(), m_type.name());
-        }
+    constexpr const C &as() const noexcept pre(is<C>()) {
         return static_cast<const C &>(*this);
     }
 
@@ -73,8 +81,9 @@ public:
     constexpr Entity owner_entity() const noexcept { return m_entity; }
 
 protected:
-    constexpr Component(type_id type, Entity entity) noexcept
+    constexpr Component(type_id type, Entity entity, ComponentID id) noexcept
             : m_type{type}
+            , m_id{id}
             , m_entity{entity} {}
 
 private:
@@ -94,8 +103,8 @@ public:
     Component(Component &&) noexcept = default;
 
 protected:
-    constexpr Component(Entity entity) noexcept
-            : Component<>{type_id::of<C>(), entity} {}
+    constexpr Component(Entity entity, ComponentID id) noexcept
+            : Component<>{type_id::of<C>(), entity, id} {}
 
 private:
 };
@@ -104,10 +113,7 @@ private:
 
 template<>
 struct std::hash<jungle::core::ecs::ComponentID> {
-    std::size_t operator()(const jungle::core::ecs::ComponentID &id) const noexcept {
-        if (!id) [[unlikely]] {
-            jungle::panic("Invalid component ID");
-        }
+    std::size_t operator()(const jungle::core::ecs::ComponentID &id) const noexcept pre(id) {
         return id.m_id;
     }
 };

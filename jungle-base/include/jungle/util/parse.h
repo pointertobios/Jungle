@@ -1,7 +1,9 @@
 #pragma once
 
 #include <array>
+#include <concepts>
 #include <ranges>
+#include <type_traits>
 
 #include "jungle/types/uchar.h"
 
@@ -12,8 +14,6 @@ namespace jungle::util {
  * @details 产生一个 uchar 序列
  */
 struct base64_encoder_view : public std::ranges::view_interface<base64_encoder_view> {
-    static constexpr usize ENCODED_LENGTH = 12;
-
     struct iterator {
         using iterator_concept = std::forward_iterator_tag;
         using iterator_category = std::forward_iterator_tag;
@@ -37,8 +37,11 @@ struct base64_encoder_view : public std::ranges::view_interface<base64_encoder_v
         usize m_index{0};
     };
 
-    base64_encoder_view(u64 value) noexcept
-            : m_value{value} {}
+    template<std::ranges::contiguous_range R>
+        requires std::same_as<std::ranges::range_value_t<R>, u8>
+    constexpr base64_encoder_view(R &range) noexcept
+            : m_data(std::ranges::data(range))
+            , m_n(static_cast<usize>(std::ranges::size(range))) {}
 
     iterator begin() const noexcept;
     iterator end() const noexcept;
@@ -48,7 +51,8 @@ struct base64_encoder_view : public std::ranges::view_interface<base64_encoder_v
 private:
     uchar at(usize index) const noexcept;
 
-    u64 m_value;
+    const u8 *m_data{nullptr};
+    usize m_n{0};
 };
 
 };  // namespace jungle::util

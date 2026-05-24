@@ -1,5 +1,7 @@
 #include "jungle/core/ecs/component.h"
 
+#include <span>
+
 namespace jungle::core::ecs {
 
 ustr ComponentID::debug() const {
@@ -7,7 +9,8 @@ ustr ComponentID::debug() const {
         return ustr{"ComponentID(NONE)"};
     }
     ustr result{"ComponentID("};
-    result.append(util::base64_encoder_view{m_id});
+    auto range = std::span{reinterpret_cast<const u8 *>(&m_id), sizeof(m_id)};
+    result.append(util::base64_encoder_view{range});
     result.append(")");
     return result;
 }

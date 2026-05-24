@@ -189,7 +189,7 @@ void ustr::check_valid(std::span<const i8> utf8) {
     for (usize i = 0; i < utf8.size();) {
         const auto length = uchar::utf8_length(std::span<const i8>(utf8.data() + i, utf8.size() - i));
         if (length == 0) {
-            panic("Invalid UTF-8 sequence at byte index {}", i);
+            panic("索引 {} 处存在非法的 UTF-8 序列", i);
         }
         i += length;
     }

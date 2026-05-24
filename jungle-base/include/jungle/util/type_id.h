@@ -40,7 +40,7 @@ public:
         std::size_t end = funcname.find_last_of(']');
 
         std::string_view name = funcname.substr(start, end - start);
-        const auto hash = detail::hash_str(name);
+        const auto hash = hash_str(name);
         return type_id{name, hash};
     }
 

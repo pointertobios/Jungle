@@ -11,8 +11,6 @@ namespace jungle::util {
 
 using hash_val = std::array<u64, 2>;
 
-namespace detail {
-
 static constexpr u64 mix64(u64 x) noexcept {
     x ^= x >> 33;
     x *= 0xff51afd7ed558ccd;
@@ -78,7 +76,5 @@ static constexpr hash_val hash_str(std::string_view str) noexcept {
 
     return {h1, h2};
 }
-
-};  // namespace detail
 
 };  // namespace jungle::util

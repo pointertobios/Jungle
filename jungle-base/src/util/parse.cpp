@@ -27,11 +27,12 @@ base64_encoder_view::iterator base64_encoder_view::iterator::operator++(int) noe
 
 base64_encoder_view::iterator base64_encoder_view::begin() const noexcept { return iterator{this, 0}; }
 
-base64_encoder_view::iterator base64_encoder_view::end() const noexcept {
-    return iterator{this, ENCODED_LENGTH};
-}
+base64_encoder_view::iterator base64_encoder_view::end() const noexcept { return iterator{this, size()}; }
 
-usize base64_encoder_view::size() const noexcept { return ENCODED_LENGTH; }
+usize base64_encoder_view::size() const noexcept {
+    const auto n = m_n;
+    return static_cast<usize>(((n + 2) / 3) * 4);
+}
 
 uchar base64_encoder_view::at(usize index) const noexcept {
     const auto block = index / 4;
@@ -39,12 +40,15 @@ uchar base64_encoder_view::at(usize index) const noexcept {
     const auto byte_index = block * 3;
 
     const auto read_byte = [this](usize i) noexcept -> u8 {
-        return static_cast<u8>((m_value >> (i * 8)) & 0xFF);
+        if (m_data && i < m_n) {
+            return m_data[i];
+        }
+        return u8{0};
     };
 
     const auto b0 = read_byte(byte_index);
-    const auto b1 = byte_index + 1 < 8 ? read_byte(byte_index + 1) : u8{0};
-    const auto b2 = byte_index + 2 < 8 ? read_byte(byte_index + 2) : u8{0};
+    const auto b1 = read_byte(byte_index + 1);
+    const auto b2 = read_byte(byte_index + 2);
 
     switch (offset) {
     case 0:
@@ -52,12 +56,12 @@ uchar base64_encoder_view::at(usize index) const noexcept {
     case 1:
         return uchar{BASE64_ALPHABET[((b0 & 0x03) << 4) | (b1 >> 4)]};
     case 2:
-        if (byte_index + 1 >= 8) {
+        if (byte_index + 1 >= m_n) {
             return uchar{'='};
         }
         return uchar{BASE64_ALPHABET[((b1 & 0x0F) << 2) | (b2 >> 6)]};
     default:
-        if (byte_index + 2 >= 8) {
+        if (byte_index + 2 >= m_n) {
             return uchar{'='};
         }
         return uchar{BASE64_ALPHABET[b2 & 0x3F]};

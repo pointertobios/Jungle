@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <type_traits>
 
 namespace jungle {
 
@@ -14,5 +15,8 @@ template<typename T>
 concept Debug = requires(T t) {
     { t.debug() } -> std::same_as<ustr>;
 };
+
+template<typename T>
+concept non_void = !std::is_void_v<T>;
 
 };  // namespace jungle::concepts
