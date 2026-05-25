@@ -10,14 +10,14 @@
 
 namespace jungle::core::ecs {
 
-template<typename>
+template<typename = void>
 class Manager;
 
 template<typename M>
-concept ComponentManager = std::derived_from<M, Manager<void>> && !std::is_same_v<M, Manager<void>>;
+concept ComponentManager = std::derived_from<M, Manager<>> && !std::is_same_v<M, Manager<>>;
 
-template<typename = void>
-class Manager<void> {
+template<>
+class Manager<> {
 public:
     template<ComponentManager M>
     constexpr bool is() const noexcept {

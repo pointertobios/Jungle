@@ -99,7 +99,6 @@ protected:
 private:
     const type_id m_type;
     const ComponentID m_id;
-
     const Entity m_entity;
 };
 
