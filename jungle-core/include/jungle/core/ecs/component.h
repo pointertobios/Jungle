@@ -67,8 +67,18 @@ public:
     constexpr bool is(type_id type) const noexcept { return m_type == type; }
 
     template<ComponentImpl C>
+    constexpr C &as() noexcept pre(is<C>()) {
+        return static_cast<C &>(*this);
+    }
+
+    template<ComponentImpl C>
     constexpr const C &as() const noexcept pre(is<C>()) {
         return static_cast<const C &>(*this);
+    }
+
+    template<ComponentImpl C>
+    constexpr C *try_as() noexcept {
+        return is<C>() ? &static_cast<C &>(*this) : nullptr;
     }
 
     template<ComponentImpl C>

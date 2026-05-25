@@ -164,7 +164,11 @@ public:
         iterator(hash_map &map, usize generation, bool end = false) noexcept
                 : m_map{map}
                 , m_generation{generation}
-                , m_index{end ? std::optional<usize>{} : std::optional<usize>{0}} {}
+                , m_index{end ? std::optional<usize>{} : std::optional<usize>{0}} {
+            if (!end) {
+                next_filled();
+            }
+        }
 
         iterator(const iterator &it) noexcept
                 : m_map{it.m_map}
@@ -227,7 +231,7 @@ public:
         }
 
         bool operator==(const iterator_const &rhs) const noexcept
-            pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
+            pre(validative_check() && rhs.validative_check() && &m_map == &rhs.m_map) {
             return m_index == rhs.m_index;
         }
 
@@ -235,7 +239,11 @@ public:
         iterator_const(const hash_map &map, usize generation, bool end = false) noexcept
                 : m_map{map}
                 , m_generation{generation}
-                , m_index{end ? std::optional<usize>{} : std::optional<usize>{0}} {}
+                , m_index{end ? std::optional<usize>{} : std::optional<usize>{0}} {
+            if (!end) {
+                next_filled();
+            }
+        }
 
         iterator_const(const iterator_const &it) noexcept
                 : m_map{it.m_map}
@@ -294,21 +302,17 @@ public:
 
         auto old_slots = std::vector<slot>(shoud_extend ? size * 2 : size / 2);
         m_slots.swap(old_slots);
-        auto do_rehash = [&](auto range) {
-            for (slot &sl : std::forward<decltype(range)>(range) | std::views::filter([](const slot &sl) {
-                                return sl.st == slot::state::filled;
-                            })) {
-                if constexpr (std::is_void_v<V>) {
-                    try_insert(sl.key, std::monostate{});
-                } else {
-                    try_insert(sl.key, try_move(*sl.value.get()));
-                }
+        m_load = 0;
+        for (slot &sl : old_slots) {
+            if (sl.st != slot::state::filled) {
+                continue;
             }
-        };
-        if constexpr (std::is_move_constructible_v<V> && !std::is_fundamental_v<V>) {
-            do_rehash(std::move(old_slots) | std::ranges::move);
-        } else {
-            do_rehash(std::move(old_slots));
+
+            if constexpr (std::is_void_v<V>) {
+                try_insert(sl.key, std::monostate{});
+            } else {
+                try_insert(sl.key, try_move(*sl.value.get()));
+            }
         }
 
         m_generation += 1;
@@ -339,14 +343,14 @@ public:
         return insert(key, std::monostate{});
     }
 
-    std::optional<V> remove(const K &key) noexcept(value_need_catch) {
+    std::optional<fuck_void<V>> remove(const K &key) noexcept(value_need_catch) {
         usize size = m_slots.size();
         usize index = m_hasher(key);
-        usize step = util::mix64(index) % size;
+        usize step = probe_step(index, size);
         index %= size;
 
         for (usize i = 0; i < size; ++i) {
-            slot &s = m_slots[index + i * step];
+            slot &s = m_slots[probe_index(index, step, size, i)];
 
             switch (s.st) {
             case slot::state::empty: {
@@ -357,24 +361,32 @@ public:
                     continue;
                 }
 
-                s.st = slot::state::tombstone;
-                std::optional<V> res = std::move(*s.value.get());
-                s.value.destroy();
-                m_load -= 1;
-                return res;
+                if constexpr (concepts::non_void<V>) {
+                    std::optional<V> res = std::move(*s.value.get());
+                    s.st = slot::state::tombstone;
+                    s.value.destroy();
+                    m_load -= 1;
+                    return res;
+                } else {
+                    s.st = slot::state::tombstone;
+                    m_load -= 1;
+                    return std::monostate{};
+                }
             } break;
             }
         }
+
+        return std::nullopt;
     }
 
     V *get(const K &key) {
         usize size = m_slots.size();
         usize index = m_hasher(key);
-        usize step = util::mix64(index) % size;
+        usize step = probe_step(index, size);
         index %= size;
 
         for (usize i = 0; i < size; ++i) {
-            slot &s = m_slots[index + i * step];
+            slot &s = m_slots[probe_index(index, step, size, i)];
 
             switch (s.st) {
             case slot::state::empty: {
@@ -389,16 +401,18 @@ public:
             } break;
             }
         }
+
+        return nullptr;
     }
 
     const V *get(const K &key) const {
         usize size = m_slots.size();
         usize index = m_hasher(key);
-        usize step = util::mix64(index) % size;
+        usize step = probe_step(index, size);
         index %= size;
 
         for (usize i = 0; i < size; ++i) {
-            slot &s = m_slots[index + i * step];
+            const slot &s = m_slots[probe_index(index, step, size, i)];
 
             switch (s.st) {
             case slot::state::empty: {
@@ -413,9 +427,20 @@ public:
             } break;
             }
         }
+
+        return nullptr;
     }
 
 private:
+    static usize probe_step(usize index, usize size) {
+        usize step = util::mix64(index) % size;
+        return step == 0 ? 1 : step;
+    }
+
+    static usize probe_index(usize index, usize step, usize size, usize probe) {
+        return (index + probe * step) % size;
+    }
+
     template<typename... Args>
     try_insert_result try_insert(const K &key, Args &&...args) noexcept(std::is_constructible_v<V, Args...>) {
         usize size = m_slots.size();
@@ -425,11 +450,11 @@ private:
         }
 
         usize index = m_hasher(key);
-        usize step = util::mix64(index) % size;
+        usize step = probe_step(index, size);
         index %= size;
 
         for (usize i = 0; i < size; ++i) {
-            slot &s = m_slots[index + i * step];
+            slot &s = m_slots[probe_index(index, step, size, i)];
 
             switch (s.st) {
             case slot::state::tombstone:
