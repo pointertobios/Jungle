@@ -2,6 +2,7 @@
 
 #include <meta>
 #include <type_traits>
+#include <vector>
 
 namespace jungle::meta {
 
@@ -19,6 +20,18 @@ consteval bool has_annotation(const std::meta::info type, const Anno _) {
     } else {
         return false;
     }
+}
+
+template<typename Anno>
+consteval std::vector<std::meta::info>
+nonstatic_data_members_with_annotation(const std::meta::info type, const Anno anno) {
+    std::vector<std::meta::info> result;
+    template for (constexpr auto m : std::define_static_array(std::meta::members_of(type))) {
+        if (std::meta::is_nonstatic_data_member(m) && has_annotation(m, anno)) {
+            result.push_back(m);
+        }
+    }
+    return result;
 }
 
 };  // namespace jungle::meta

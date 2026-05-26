@@ -131,6 +131,21 @@ constexpr std::array<i8, 4> uchar::to_utf8() const noexcept {
     return utf8;
 }
 
+ustr::ustr(const char *str) noexcept
+        : m_storage{str} {
+    check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
+}
+
+ustr::ustr(std::string_view str) noexcept
+        : m_storage{str} {
+    check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
+}
+
+ustr::ustr(std::string &&str) noexcept
+        : m_storage{std::move(str)} {
+    check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
+}
+
 std::vector<uchar> ustr::to_uchars() const {
     std::vector<uchar> result(16);
     const auto str_view = view();
@@ -185,7 +200,7 @@ void ustr::append(std::span<const i8> char_range) {
     m_storage.append_range(char_range);
 }
 
-void ustr::check_valid(std::span<const i8> utf8) {
+void ustr::check_valid(std::span<const i8> utf8) noexcept {
     for (usize i = 0; i < utf8.size();) {
         const auto length = uchar::utf8_length(std::span<const i8>(utf8.data() + i, utf8.size() - i));
         if (length == 0) {

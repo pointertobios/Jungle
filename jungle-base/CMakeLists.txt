@@ -13,6 +13,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/meta.h
     ${IPREF}/panic.h
     ${IPREF}/preusing.h
+    ${IPREF}/serde.h
 )
 
 set(JUNGLE_SOURCES

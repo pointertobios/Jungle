@@ -85,20 +85,11 @@ class ustr {
 public:
     constexpr ustr() noexcept = default;
 
-    constexpr ustr(const char *str) noexcept
-            : m_storage{str} {
-        check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
-    }
+    ustr(const char *str) noexcept;
 
-    constexpr ustr(std::string_view str) noexcept
-            : m_storage{str} {
-        check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
-    }
+    ustr(std::string_view str) noexcept;
 
-    constexpr ustr(std::string &&str) noexcept
-            : m_storage{std::move(str)} {
-        check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
-    }
+    ustr(std::string &&str) noexcept;
 
     template<std::ranges::input_range R>
         requires std::convertible_to<std::ranges::range_value_t<R>, const char>
@@ -108,7 +99,7 @@ public:
         }
     }
 
-    constexpr std::string_view view() const noexcept { return m_storage; }
+    std::string_view view() const noexcept { return m_storage; }
 
     std::vector<uchar> to_uchars() const;
 
@@ -143,7 +134,7 @@ public:
     }
 
 private:
-    static void check_valid(std::span<const i8> utf8);
+    static void check_valid(std::span<const i8> utf8) noexcept;
 
     friend struct std::formatter<jungle::ustr>;
 
