@@ -32,8 +32,8 @@ set(JUNGLE_OPTIONS
     -Werror
     -freflection
     -fcontracts
-    $<$<CONFIG:Debug>:-fcontract-evaluation-semantic=ignore>
-    $<$<CONFIG:Release>:-fcontract-evaluation-semantic=ignore>
+    $<$<CONFIG:Debug>:-fcontract-evaluation-semantic=enforce>
+    $<$<CONFIG:Release>:-fcontract-evaluation-semantic=quick-enforce>
 )
 
 add_library(jungle-base ${JUNGLE_SOURCES})
