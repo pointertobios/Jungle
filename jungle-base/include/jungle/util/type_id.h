@@ -1,5 +1,6 @@
 #pragma once
 
+#include <meta>
 #include <string_view>
 #include <utility>
 
@@ -28,18 +29,7 @@ public:
 
     template<typename T>
     consteval static type_id of() noexcept {
-#if defined(__clang__) || defined(__GNUC__)
-        constexpr std::string_view funcname = __PRETTY_FUNCTION__;
-#elif defined(__FUNCSIG__)
-        constexpr std::string_view funcname = __FUNCSIG__;
-#else
-#    error "Unsupported compiler"
-#endif
-
-        std::size_t start = funcname.find_first_of('=') + 2;
-        std::size_t end = funcname.find_last_of(']');
-
-        std::string_view name = funcname.substr(start, end - start);
+        constexpr auto name = std::meta::display_string_of(^^T);
         const auto hash = hash_str(name);
         return type_id{name, hash};
     }

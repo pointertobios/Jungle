@@ -1,11 +1,15 @@
 #include <print>
 
 #include "jungle/core/ecs/entity.h"
+#include "jungle/meta.h"
 #include "jungle/preusing.h"
 
 using namespace jungle;
 
 enum class Color { Red, Green, Blue };
+
+inline constexpr struct {
+} annotation_test;
 
 struct T {
     core::ecs::Entity e;
@@ -50,4 +54,6 @@ int main() {
     std::vector l{Color::Red, Color::Green, Color::Blue};
     std::println("{}", debug(entity));
     std::println("{}", debug(s));
+    jungle::meta::has_template_annotation<^^jungle::core::ecs::Entity>(^^annotation_test);
+    std::println("{}", type_id::of<std::vector<int>>().name());
 }

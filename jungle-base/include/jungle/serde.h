@@ -1,8 +1,10 @@
 #pragma once
 
-#include "jungle/meta.h"
 #include <concepts>
 #include <type_traits>
+
+#include "jungle/meta.h"
+
 namespace jungle::serde {
 
 template<typename = void>
@@ -124,7 +126,7 @@ public:
         constexpr auto ctx = std::meta::access_context::unchecked();
         template for (constexpr auto m : std::define_static_array(std::meta::members_of(^^T, ctx))) {
             constexpr bool marked_as_field = meta::has_annotation(m, field);
-            constexpr bool customized_field = meta::has_template_annotation(m, ^^customized);
+            constexpr bool customized_field = meta::has_template_annotation<m>(^^customized);
             if constexpr (std::meta::is_nonstatic_data_member(m)) {
                 self().serialize_class_field(std::meta::identifier_of(m));
                 auto subtarget = spawn_subtarget();
@@ -135,7 +137,7 @@ public:
                 } else if constexpr (
                     (!customized_class && customized_field)
                     || (customized_class && marked_as_field && customized_field)) {
-                    constexpr auto customized_anno = meta::first_template_annotation_of(m, ^^customized);
+                    constexpr auto customized_anno = meta::nth_template_annotation_of<m>(0, ^^customized);
                     constexpr auto customizer = std::define_static_array(
                         std::meta::template_arguments_of(std::meta::type_of(customized_anno)))[0];
                     // clang-format off

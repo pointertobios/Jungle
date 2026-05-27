@@ -4,6 +4,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "jungle/types/int.h"
+
 namespace jungle::meta {
 
 /**
@@ -23,15 +25,15 @@ consteval bool has_annotation(const std::meta::info type, const Anno _) {
 }
 
 /**
- * @brief 判断是否含有指定模板注解的实例
+ * @brief 判断实体是否含有指定模板注解的实例
  *
- * @param type 被判断的实体
+ * @tparam Instance 被判断的实体
  * @param temp_anno 目标模板注解
  * @return bool
  */
-consteval bool has_template_annotation(const std::meta::info type, const std::meta::info temp_anno)
-    pre(std::meta::is_variable_template(temp_anno)) {
-    template for (constexpr auto anno : std::define_static_array(std::meta::annotations_of(type))) {
+template<std::meta::info Instance>
+consteval bool has_template_annotation(const std::meta::info temp_anno) {
+    template for (constexpr auto anno : std::define_static_array(std::meta::annotations_of(Instance))) {
         if constexpr (std::meta::has_template_arguments(anno)) {
             if (std::meta::template_of(anno) == temp_anno) {
                 return true;
@@ -41,13 +43,24 @@ consteval bool has_template_annotation(const std::meta::info type, const std::me
     return false;
 }
 
-consteval std::meta::info
-first_template_annotation_of(const std::meta::info type, const std::meta::info temp_anno)
-    pre(std::meta::is_variable_template(temp_anno)) {
-    template for (constexpr auto anno : std::define_static_array(std::meta::annotations_of(type))) {
+/**
+ * @brief 获取实体上指定模板注解的第 N 个实例
+ *
+ * @tparam Instance 被查询的实体
+ * @param nth 第 N 个实例
+ * @param temp_anno 目标模板注解
+ * @return std::meta::info 注解实例的反射信息，如果未找到则返回 ^^void
+ */
+template<std::meta::info Instance>
+consteval std::meta::info nth_template_annotation_of(usize nth, const std::meta::info temp_anno) {
+    template for (constexpr auto anno : std::define_static_array(std::meta::annotations_of(Instance))) {
         if constexpr (std::meta::has_template_arguments(anno)) {
             if (std::meta::template_of(anno) == temp_anno) {
-                return anno;
+                if (nth == 0) {
+                    return anno;
+                } else {
+                    nth -= 1;
+                }
             }
         }
     }
