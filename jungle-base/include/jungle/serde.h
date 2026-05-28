@@ -13,7 +13,7 @@ class SerializeTarget;
 template<typename T>
 concept SerializeTargetImpl =
     std::derived_from<T, SerializeTarget<T>> && !std::is_same_v<T, SerializeTarget<T>>
-    && std::is_nothrow_default_constructible_v<T> && requires(T t) {
+    && std::is_default_constructible_v<T> && requires(T t) {
            typename T::result_type;
            { t.deliver_result() } -> std::same_as<typename T::result_type &&>;
        };
@@ -30,7 +30,7 @@ inline typename Target::result_type serialize(T &&value) {
 
 template<template<typename> typename Custr>
 concept Customizer = requires(Custr<int> c, SerializeTarget<void> &target) {
-    std::is_nothrow_default_constructible_v<decltype(c)>;
+    std::is_default_constructible_v<decltype(c)>;
     c.serialize(std::declval<int>(), target);
 };
 
@@ -57,8 +57,8 @@ public:
     constexpr SerializeTarget(const SerializeTarget &) = delete;
     constexpr SerializeTarget &operator=(const SerializeTarget &) = delete;
 
-    constexpr SerializeTarget(SerializeTarget &&) noexcept = default;
-    constexpr SerializeTarget &operator=(SerializeTarget &&) noexcept = default;
+    constexpr SerializeTarget(SerializeTarget &&) = default;
+    constexpr SerializeTarget &operator=(SerializeTarget &&) = default;
 
     Target spawn_subtarget() const
         requires std::same_as<decltype(self().spawn_subtarget()), Target>
@@ -152,7 +152,7 @@ public:
     }
 
 protected:
-    constexpr SerializeTarget() noexcept = default;
+    constexpr SerializeTarget() = default;
 };
 
 template<SerializeTargetImpl Target, typename T>

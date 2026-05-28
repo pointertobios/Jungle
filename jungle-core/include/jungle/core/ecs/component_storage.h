@@ -18,12 +18,9 @@ template<ComponentImpl C, typename StorageType>
         std::derived_from<StorageType, ComponentStorage<C, StorageType>>
         && !std::same_as<StorageType, ComponentStorage<C, StorageType>>)
 class ComponentStorage<C, StorageType> {
-    template<typename... Args>
-    static constexpr bool nothrow = std::is_nothrow_constructible_v<C, Args...>;
-
 public:
     template<typename... Args>
-    C &create(ComponentID id, Args &&...args) noexcept(nothrow<decltype(args)...>) {
+    C &create(ComponentID id, Args &&...args) {
         auto self = static_cast<StorageType *>(this);
         return self->create(id, std::forward<Args>(args)...);
     }
@@ -65,9 +62,6 @@ public:
 
 template<ComponentImpl C>
 class DenseComponentStorage : public ComponentStorage<C, DenseComponentStorage<C>> {
-    template<typename... Args>
-    static constexpr bool nothrow = std::is_nothrow_constructible_v<C, Args...>;
-
     static constexpr usize segment_size = 64;
     static constexpr usize segment_size_mask = 0x3f;
 
@@ -103,7 +97,7 @@ public:
     }
 
     template<typename... Args>
-    C &create(ComponentID id, Args &&...args) noexcept(nothrow<decltype(args)...>) {
+    C &create(ComponentID id, Args &&...args) {
         usize seg_index = segment_index(id);
         auto [slot, index] = m_free_list_heads[seg_index].next_free;
         if (!slot) {
@@ -198,7 +192,7 @@ public:
     SparseComponentStorage() = default;
 
     template<typename... Args>
-    C &create(ComponentID id, Args &&...args) noexcept(std::is_nothrow_constructible_v<C, Args...>) {
+    C &create(ComponentID id, Args &&...args) {
         auto ptr = std::make_unique<C>(std::forward<Args>(args)...);
         C &ref = *ptr;
         m_components.emplace(id, std::move(ptr));

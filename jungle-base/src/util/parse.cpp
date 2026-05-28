@@ -12,34 +12,34 @@ constexpr std::array<i8, 64> BASE64_ALPHABET{'A', 'B', 'C', 'D', 'E', 'F', 'G', 
 
 }  // namespace
 
-uchar base64_encoder_view::iterator::operator*() const noexcept { return m_view->at(m_index); }
+uchar base64_encoder_view::iterator::operator*() const { return m_view->at(m_index); }
 
-base64_encoder_view::iterator &base64_encoder_view::iterator::operator++() noexcept {
+base64_encoder_view::iterator &base64_encoder_view::iterator::operator++() {
     ++m_index;
     return *this;
 }
 
-base64_encoder_view::iterator base64_encoder_view::iterator::operator++(int) noexcept {
+base64_encoder_view::iterator base64_encoder_view::iterator::operator++(int) {
     auto copy = *this;
     ++(*this);
     return copy;
 }
 
-base64_encoder_view::iterator base64_encoder_view::begin() const noexcept { return iterator{this, 0}; }
+base64_encoder_view::iterator base64_encoder_view::begin() const { return iterator{this, 0}; }
 
-base64_encoder_view::iterator base64_encoder_view::end() const noexcept { return iterator{this, size()}; }
+base64_encoder_view::iterator base64_encoder_view::end() const { return iterator{this, size()}; }
 
-usize base64_encoder_view::size() const noexcept {
+usize base64_encoder_view::size() const {
     const auto n = m_n;
     return static_cast<usize>(((n + 2) / 3) * 4);
 }
 
-uchar base64_encoder_view::at(usize index) const noexcept {
+uchar base64_encoder_view::at(usize index) const {
     const auto block = index / 4;
     const auto offset = index % 4;
     const auto byte_index = block * 3;
 
-    const auto read_byte = [this](usize i) noexcept -> u8 {
+    const auto read_byte = [this](usize i) -> u8 {
         if (m_data && i < m_n) {
             return m_data[i];
         }

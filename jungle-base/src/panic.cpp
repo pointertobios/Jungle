@@ -1,9 +1,13 @@
 #include "jungle/panic.h"
 
-#include <string>
+#include <exception>
+#include <print>
 
 namespace jungle {
 
-[[noreturn]] void panic(ustr message) { throw std::runtime_error{std::string{message.view()}}; }
+[[noreturn]] void panic(ustr message) {
+    std::println("[panic] {}", message.view());
+    std::terminate();
+}
 
 };  // namespace jungle

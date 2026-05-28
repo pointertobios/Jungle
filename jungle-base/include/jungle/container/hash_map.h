@@ -19,9 +19,9 @@ namespace jungle {
 
 template<typename K>
 concept hash_key =
-    std::is_default_constructible_v<K> && std::is_nothrow_copy_assignable_v<K>
-    && std::is_nothrow_copy_constructible_v<K> && std::is_nothrow_destructible_v<K>
-    && std::equality_comparable<K> && std::copyable<K> && std::is_nothrow_destructible_v<K> && requires(K k) {
+    std::is_default_constructible_v<K> && std::is_copy_assignable_v<K> && std::is_copy_constructible_v<K>
+    && std::is_destructible_v<K> && std::equality_comparable<K> && std::copyable<K>
+    && std::is_destructible_v<K> && requires(K k) {
            { std::hash<K>{}(k) } -> std::convertible_to<usize>;
        };
 
@@ -105,10 +105,6 @@ class hash_map {
 
     constexpr static usize default_slots_size = 64;
 
-    constexpr static bool value_need_catch = std::is_move_constructible_v<V>
-                                                 ? std::is_nothrow_move_constructible_v<V>
-                                                 : std::is_nothrow_copy_constructible_v<V>;
-
     constexpr static usize load_factor_numerator = 3;
     constexpr static usize load_factor_denominator = 4;
 
@@ -123,7 +119,7 @@ public:
         friend class hash_map;
 
     public:
-        fuck_void_or_else<V, detail::pair_ref<K, fuck_void<V>>, K> operator*() noexcept
+        fuck_void_or_else<V, detail::pair_ref<K, fuck_void<V>>, K> operator*()
             pre(validative_check() && end_check()) {
             auto &sl = m_map.m_slots.at(*m_index);
             if constexpr (std::is_void_v<V>) {
@@ -133,7 +129,7 @@ public:
             }
         }
 
-        fuck_void_or_else<V, detail::pair_ref_const<K, fuck_void<V>>, K> operator*() const noexcept
+        fuck_void_or_else<V, detail::pair_ref_const<K, fuck_void<V>>, K> operator*() const
             pre(validative_check() && end_check()) {
             auto &sl = m_map.m_slots.at(*m_index);
             if constexpr (std::is_void_v<V>) {
@@ -143,25 +139,25 @@ public:
             }
         }
 
-        iterator &operator++() noexcept pre(validative_check() && end_check()) {
+        iterator &operator++() pre(validative_check() && end_check()) {
             *m_index += 1;
             next_filled();
             return *this;
         }
 
-        iterator operator++(int) noexcept pre(validative_check() && end_check()) {
+        iterator operator++(int) pre(validative_check() && end_check()) {
             iterator res = *this;
             (*this)++;
             return res;
         }
 
-        bool operator==(const iterator &rhs) const noexcept
+        bool operator==(const iterator &rhs) const
             pre(validative_check() && rhs.validative_check() && &m_map == &rhs.m_map) {
             return m_index == rhs.m_index;
         }
 
     private:
-        iterator(hash_map &map, usize generation, bool end = false) noexcept
+        iterator(hash_map &map, usize generation, bool end = false)
                 : m_map{map}
                 , m_generation{generation}
                 , m_index{end ? std::optional<usize>{} : std::optional<usize>{0}} {
@@ -170,12 +166,12 @@ public:
             }
         }
 
-        iterator(const iterator &it) noexcept
+        iterator(const iterator &it)
                 : m_map{it.m_map}
                 , m_generation{it.m_generation}
                 , m_index{it.m_index} {}
 
-        void next_filled() noexcept {
+        void next_filled() {
             if (!m_index) {
                 return;
             }
@@ -190,14 +186,14 @@ public:
             }
         }
 
-        bool validative_check() const noexcept {
+        bool validative_check() const {
             if (m_map.m_generation != m_generation) [[unlikely]] {
                 return false;
             }
             return true;
         }
 
-        bool end_check() const noexcept { return m_index.has_value(); }
+        bool end_check() const { return m_index.has_value(); }
 
         hash_map &m_map;
         const usize m_generation;
@@ -208,7 +204,7 @@ public:
         friend class hash_map;
 
     public:
-        fuck_void_or_else<V, detail::pair_ref_const<K, V>, K> operator*() const noexcept
+        fuck_void_or_else<V, detail::pair_ref_const<K, V>, K> operator*() const
             pre(validative_check() && end_check()) {
             auto &sl = m_map.m_slots.at(*m_index);
             if constexpr (std::is_void_v<V>) {
@@ -218,25 +214,25 @@ public:
             }
         }
 
-        iterator_const &operator++() noexcept pre(validative_check() && end_check()) {
+        iterator_const &operator++() pre(validative_check() && end_check()) {
             *m_index += 1;
             next_filled();
             return *this;
         }
 
-        iterator_const operator++(int) noexcept pre(validative_check() && end_check()) {
+        iterator_const operator++(int) pre(validative_check() && end_check()) {
             iterator_const res = *this;
             (*this)++;
             return res;
         }
 
-        bool operator==(const iterator_const &rhs) const noexcept
+        bool operator==(const iterator_const &rhs) const
             pre(validative_check() && rhs.validative_check() && &m_map == &rhs.m_map) {
             return m_index == rhs.m_index;
         }
 
     private:
-        iterator_const(const hash_map &map, usize generation, bool end = false) noexcept
+        iterator_const(const hash_map &map, usize generation, bool end = false)
                 : m_map{map}
                 , m_generation{generation}
                 , m_index{end ? std::optional<usize>{} : std::optional<usize>{0}} {
@@ -245,12 +241,12 @@ public:
             }
         }
 
-        iterator_const(const iterator_const &it) noexcept
+        iterator_const(const iterator_const &it)
                 : m_map{it.m_map}
                 , m_generation{it.m_generation}
                 , m_index{it.m_index} {}
 
-        void next_filled() noexcept {
+        void next_filled() {
             if (!m_index) {
                 return;
             }
@@ -265,14 +261,14 @@ public:
             }
         }
 
-        bool validative_check() const noexcept {
+        bool validative_check() const {
             if (m_map.m_generation != m_generation) [[unlikely]] {
                 return false;
             }
             return true;
         }
 
-        bool end_check() const noexcept { return m_index.has_value(); }
+        bool end_check() const { return m_index.has_value(); }
 
         const hash_map &m_map;
         const usize m_generation;
@@ -319,7 +315,7 @@ public:
     }
 
     template<typename... Args>
-    bool emplace(const K &key, Args &&...args) noexcept(std::is_nothrow_constructible_v<V, Args...>) {
+    bool emplace(const K &key, Args &&...args){
         while (true) {
             switch (try_insert(key, std::forward<Args>(args)...)) {
             case try_insert_result::succeeded:
@@ -333,7 +329,7 @@ public:
         }
     }
 
-    bool insert(const K &key, try_move_t<fuck_void<V>> v) noexcept(value_need_catch) {
+    bool insert(const K &key, try_move_t<fuck_void<V>> v)  {
         return emplace(key, std::forward<decltype(v)>(v));
     }
 
@@ -343,7 +339,7 @@ public:
         return insert(key, std::monostate{});
     }
 
-    std::optional<fuck_void<V>> remove(const K &key) noexcept(value_need_catch) {
+    std::optional<fuck_void<V>> remove(const K &key) {
         usize size = m_slots.size();
         usize index = m_hasher(key);
         usize step = probe_step(index, size);
@@ -442,7 +438,7 @@ private:
     }
 
     template<typename... Args>
-    try_insert_result try_insert(const K &key, Args &&...args) noexcept(std::is_constructible_v<V, Args...>) {
+    try_insert_result try_insert(const K &key, Args &&...args) {
         usize size = m_slots.size();
 
         if (m_load * load_factor_denominator > load_factor_numerator * size) [[unlikely]] {

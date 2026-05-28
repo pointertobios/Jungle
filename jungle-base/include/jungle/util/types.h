@@ -13,7 +13,7 @@ using try_move_t = std::conditional_t<
     std::conditional_t<std::is_copy_constructible_v<T> && !std::is_fundamental_v<T>, const T &, T>>;
 
 template<typename T>
-inline auto try_move(T &&t) noexcept {
+inline auto try_move(T &&t) {
     if constexpr (std::is_move_constructible_v<T> && !std::is_fundamental_v<T>) {
         return std::move(t);
     } else if constexpr (std::is_copy_constructible_v<T> && !std::is_fundamental_v<T>) {

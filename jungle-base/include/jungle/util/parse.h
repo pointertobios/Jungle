@@ -20,17 +20,17 @@ struct base64_encoder_view : public std::ranges::view_interface<base64_encoder_v
         using value_type = uchar;
         using difference_type = isize;
 
-        iterator() noexcept = default;
-        iterator(const base64_encoder_view *view, usize index) noexcept
+        iterator() = default;
+        iterator(const base64_encoder_view *view, usize index)
                 : m_view{view}
                 , m_index{index} {}
 
-        uchar operator*() const noexcept;
+        uchar operator*() const;
 
-        iterator &operator++() noexcept;
-        iterator operator++(int) noexcept;
+        iterator &operator++();
+        iterator operator++(int);
 
-        bool operator==(const iterator &other) const noexcept = default;
+        bool operator==(const iterator &other) const = default;
 
     private:
         const base64_encoder_view *m_view{nullptr};
@@ -39,17 +39,17 @@ struct base64_encoder_view : public std::ranges::view_interface<base64_encoder_v
 
     template<std::ranges::contiguous_range R>
         requires std::same_as<std::ranges::range_value_t<R>, u8>
-    constexpr base64_encoder_view(R &range) noexcept
+    constexpr base64_encoder_view(R &range)
             : m_data(std::ranges::data(range))
             , m_n(static_cast<usize>(std::ranges::size(range))) {}
 
-    iterator begin() const noexcept;
-    iterator end() const noexcept;
+    iterator begin() const;
+    iterator end() const;
 
-    usize size() const noexcept;
+    usize size() const;
 
 private:
-    uchar at(usize index) const noexcept;
+    uchar at(usize index) const;
 
     const u8 *m_data{nullptr};
     usize m_n{0};

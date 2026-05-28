@@ -33,6 +33,8 @@ set(JUNGLE_OPTIONS
     -Werror
     -freflection
     -fcontracts
+    -fno-rtti
+    -fno-exceptions
     $<$<CONFIG:Debug>:-fcontract-evaluation-semantic=enforce>
     $<$<CONFIG:Release>:-fcontract-evaluation-semantic=quick-enforce>
 )

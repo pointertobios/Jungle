@@ -11,7 +11,7 @@ namespace jungle::util {
 
 using hash_val = std::array<u64, 2>;
 
-static constexpr u64 mix64(u64 x) noexcept {
+static constexpr u64 mix64(u64 x) {
     x ^= x >> 33;
     x *= 0xff51afd7ed558ccd;
     x ^= x >> 33;
@@ -20,7 +20,7 @@ static constexpr u64 mix64(u64 x) noexcept {
     return x;
 }
 
-static constexpr u64 concat64le(const char *source, usize nbytes) noexcept {
+static constexpr u64 concat64le(const char *source, usize nbytes) {
     u64 result{0};
     for (usize i = 0; i < nbytes; ++i) {
         result |= static_cast<u64>(static_cast<unsigned char>(source[i])) << (i * 8);
@@ -28,7 +28,7 @@ static constexpr u64 concat64le(const char *source, usize nbytes) noexcept {
     return result;
 }
 
-static constexpr hash_val hash_str(std::string_view str) noexcept {
+static constexpr hash_val hash_str(std::string_view str) {
     u64 len = str.size();
 
     constexpr u64 c1 = 0x87c37b91114253d5;

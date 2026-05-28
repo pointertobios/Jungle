@@ -15,16 +15,16 @@ class ComponentID {
     static constexpr u64 INVALID = 0;
 
 public:
-    constexpr ComponentID() noexcept = default;
-    constexpr ComponentID(const ComponentID &) noexcept = default;
-    constexpr ComponentID &operator=(const ComponentID &) noexcept = default;
-    constexpr ComponentID(ComponentID &&) noexcept = default;
-    constexpr ComponentID &operator=(ComponentID &&) noexcept = default;
+    constexpr ComponentID() = default;
+    constexpr ComponentID(const ComponentID &) = default;
+    constexpr ComponentID &operator=(const ComponentID &) = default;
+    constexpr ComponentID(ComponentID &&) = default;
+    constexpr ComponentID &operator=(ComponentID &&) = default;
 
-    constexpr operator bool() const noexcept { return m_id != INVALID; }
-    constexpr bool operator==(const ComponentID &other) const noexcept { return m_id == other.m_id; }
+    constexpr operator bool() const { return m_id != INVALID; }
+    constexpr bool operator==(const ComponentID &other) const { return m_id == other.m_id; }
 
-    constexpr ComponentID(u64 id) noexcept
+    constexpr ComponentID(u64 id)
             : m_id{id} {}
 
     ustr debug() const;
@@ -57,41 +57,41 @@ public:
     Component &operator=(const Component &) = delete;
     Component &operator=(Component &&) = delete;
 
-    Component(Component &&) noexcept = default;
+    Component(Component &&) = default;
 
     template<ComponentImpl C>
-    constexpr bool is() const noexcept {
+    constexpr bool is() const {
         return m_type == type_id::of<C>();
     }
 
-    constexpr bool is(type_id type) const noexcept { return m_type == type; }
+    constexpr bool is(type_id type) const { return m_type == type; }
 
     template<ComponentImpl C>
-    constexpr C &as() noexcept pre(is<C>()) {
+    constexpr C &as() pre(is<C>()) {
         return static_cast<C &>(*this);
     }
 
     template<ComponentImpl C>
-    constexpr const C &as() const noexcept pre(is<C>()) {
+    constexpr const C &as() const pre(is<C>()) {
         return static_cast<const C &>(*this);
     }
 
     template<ComponentImpl C>
-    constexpr C *try_as() noexcept {
+    constexpr C *try_as() {
         return is<C>() ? &static_cast<C &>(*this) : nullptr;
     }
 
     template<ComponentImpl C>
-    constexpr const C *try_as() const noexcept {
+    constexpr const C *try_as() const {
         return is<C>() ? &static_cast<const C &>(*this) : nullptr;
     }
 
-    constexpr type_id type() const noexcept { return m_type; }
+    constexpr type_id type() const { return m_type; }
 
-    constexpr Entity owner_entity() const noexcept { return m_entity; }
+    constexpr Entity owner_entity() const { return m_entity; }
 
 protected:
-    constexpr Component(type_id type, Entity entity, ComponentID id) noexcept
+    constexpr Component(type_id type, Entity entity, ComponentID id)
             : m_type{type}
             , m_id{id}
             , m_entity{entity} {}
@@ -109,10 +109,10 @@ public:
     Component &operator=(const Component &) = delete;
     Component &operator=(Component &&) = delete;
 
-    Component(Component &&) noexcept = default;
+    Component(Component &&) = default;
 
 protected:
-    constexpr Component(Entity entity, ComponentID id) noexcept
+    constexpr Component(Entity entity, ComponentID id)
             : Component<>{type_id::of<C>(), entity, id} {}
 
 private:
@@ -122,7 +122,5 @@ private:
 
 template<>
 struct std::hash<jungle::core::ecs::ComponentID> {
-    std::size_t operator()(const jungle::core::ecs::ComponentID &id) const noexcept pre(id) {
-        return id.m_id;
-    }
+    std::size_t operator()(const jungle::core::ecs::ComponentID &id) const pre(id) { return id.m_id; }
 };

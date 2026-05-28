@@ -37,17 +37,17 @@ struct uchar {
     static constexpr u32 MAX = 0x10FFFF;
     static constexpr u32 INVALID = 0;
 
-    constexpr uchar() noexcept = default;
+    constexpr uchar() = default;
 
-    constexpr uchar(i8 ascii) noexcept
+    constexpr uchar(i8 ascii)
             : m_value(static_cast<u32>(static_cast<u8>(ascii))) {}
 
-    constexpr uchar(int ascii) noexcept
+    constexpr uchar(int ascii)
             : m_value(static_cast<u32>(ascii)) {}
 
-    constexpr operator bool() const noexcept { return m_value != INVALID; }
+    constexpr operator bool() const { return m_value != INVALID; }
 
-    constexpr bool operator==(const uchar &other) const noexcept {
+    constexpr bool operator==(const uchar &other) const {
         return m_value != INVALID && other.m_value != INVALID && m_value == other.m_value;
     }
 
@@ -57,7 +57,7 @@ struct uchar {
      * @param utf8 至少包含一个完整 UTF-8 字符的字节序列
      * @return usize UTF-8 字符的字节长度，或0如果输入无效
      */
-    static constexpr usize utf8_length(std::span<const i8> utf8) noexcept;
+    static constexpr usize utf8_length(std::span<const i8> utf8);
 
     /**
      * @brief 从 UTF-8 序列中解析出一个字符
@@ -65,17 +65,17 @@ struct uchar {
      * @param utf8 至少包含一个完整 UTF-8 字符的字节序列
      * @return uchar 解析出的字符，如果输入无效则返回 {uchar::INVALID}
      */
-    static constexpr uchar from_utf8(std::span<const i8> utf8) noexcept;
+    static constexpr uchar from_utf8(std::span<const i8> utf8);
 
     /**
      * @brief 将字符编码为 UTF-8 序列
      *
      * @return std::array<i8, 4> UTF-8 编码的字节数组，UTF-8 编码长度不足 4 字节时尾部填充 0
      */
-    constexpr std::array<i8, 4> to_utf8() const noexcept;
+    constexpr std::array<i8, 4> to_utf8() const;
 
 private:
-    constexpr uchar(u32 value) noexcept
+    constexpr uchar(u32 value)
             : m_value(value) {}
 
     u32 m_value{0};
@@ -83,13 +83,13 @@ private:
 
 class ustr {
 public:
-    constexpr ustr() noexcept = default;
+    constexpr ustr() = default;
 
-    ustr(const char *str) noexcept;
+    ustr(const char *str);
 
-    ustr(std::string_view str) noexcept;
+    ustr(std::string_view str);
 
-    ustr(std::string &&str) noexcept;
+    ustr(std::string &&str);
 
     template<std::ranges::input_range R>
         requires std::convertible_to<std::ranges::range_value_t<R>, const char>
@@ -99,7 +99,7 @@ public:
         }
     }
 
-    std::string_view view() const noexcept { return m_storage; }
+    std::string_view view() const { return m_storage; }
 
     std::vector<uchar> to_uchars() const;
 
@@ -134,7 +134,7 @@ public:
     }
 
 private:
-    static void check_valid(std::span<const i8> utf8) noexcept;
+    static void check_valid(std::span<const i8> utf8);
 
     friend struct std::formatter<jungle::ustr>;
 

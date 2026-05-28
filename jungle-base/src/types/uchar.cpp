@@ -4,7 +4,7 @@
 
 namespace jungle {
 
-constexpr usize uchar::utf8_length(std::span<const i8> utf8) noexcept {
+constexpr usize uchar::utf8_length(std::span<const i8> utf8) {
     if (utf8.empty()) {
         return 0;
     }
@@ -65,7 +65,7 @@ constexpr usize uchar::utf8_length(std::span<const i8> utf8) noexcept {
     return 0;
 }
 
-constexpr uchar uchar::from_utf8(std::span<const i8> utf8) noexcept {
+constexpr uchar uchar::from_utf8(std::span<const i8> utf8) {
     const auto length = utf8_length(utf8);
     if (length == 0) {
         return uchar{INVALID};
@@ -96,7 +96,7 @@ constexpr uchar uchar::from_utf8(std::span<const i8> utf8) noexcept {
     return uchar{value};
 }
 
-constexpr std::array<i8, 4> uchar::to_utf8() const noexcept {
+constexpr std::array<i8, 4> uchar::to_utf8() const {
     std::array<i8, 4> utf8{};
 
     if (m_value <= 0x7F) {
@@ -131,17 +131,17 @@ constexpr std::array<i8, 4> uchar::to_utf8() const noexcept {
     return utf8;
 }
 
-ustr::ustr(const char *str) noexcept
+ustr::ustr(const char *str)
         : m_storage{str} {
     check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
 }
 
-ustr::ustr(std::string_view str) noexcept
+ustr::ustr(std::string_view str)
         : m_storage{str} {
     check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
 }
 
-ustr::ustr(std::string &&str) noexcept
+ustr::ustr(std::string &&str)
         : m_storage{std::move(str)} {
     check_valid(std::span<const i8>{reinterpret_cast<const i8 *>(m_storage.data()), m_storage.size()});
 }
@@ -200,7 +200,7 @@ void ustr::append(std::span<const i8> char_range) {
     m_storage.append_range(char_range);
 }
 
-void ustr::check_valid(std::span<const i8> utf8) noexcept {
+void ustr::check_valid(std::span<const i8> utf8) {
     for (usize i = 0; i < utf8.size();) {
         const auto length = uchar::utf8_length(std::span<const i8>(utf8.data() + i, utf8.size() - i));
         if (length == 0) {

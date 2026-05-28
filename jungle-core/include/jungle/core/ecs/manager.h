@@ -20,29 +20,29 @@ template<>
 class Manager<> {
 public:
     template<ComponentManager M>
-    constexpr bool is() const noexcept {
+    constexpr bool is() const {
         return m_type == type_id::of<M>();
     }
 
-    constexpr bool is(type_id manager_type) const noexcept { return m_type == manager_type; }
+    constexpr bool is(type_id manager_type) const { return m_type == manager_type; }
 
     template<ComponentManager M>
-    constexpr M &as() noexcept pre(is<M>()) {
+    constexpr M &as() pre(is<M>()) {
         return static_cast<M &>(*this);
     }
 
     template<ComponentManager M>
-    constexpr const M &as() const noexcept pre(is<M>()) {
+    constexpr const M &as() const pre(is<M>()) {
         return static_cast<const M &>(*this);
     }
 
     template<ComponentManager M>
-    constexpr M *try_as() noexcept {
+    constexpr M *try_as() {
         return is<M>() ? &static_cast<M &>(*this) : nullptr;
     }
 
     template<ComponentManager M>
-    constexpr const M *try_as() const noexcept {
+    constexpr const M *try_as() const {
         return is<M>() ? &static_cast<const M &>(*this) : nullptr;
     }
 
@@ -53,7 +53,7 @@ public:
     virtual std::vector<std::reference_wrapper<const Component<>>> vget_components(Entity entity) const = 0;
 
 protected:
-    constexpr Manager(type_id type) noexcept
+    constexpr Manager(type_id type)
             : m_type{type} {}
 
 private:
@@ -63,7 +63,7 @@ private:
 template<ComponentImpl C>
 class Manager<C> final : public Manager<> {
 public:
-    constexpr Manager() noexcept
+    constexpr Manager()
             : Manager<>{type_id::of<Manager<C>>()} {}
 
     auto get_components() { m_storage.get_components(); }

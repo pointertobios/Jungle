@@ -4,22 +4,22 @@
 #include <string_view>
 #include <utility>
 
-#include "jungle/util/murmur.h"
+#include "jungle/types/int.h"
 
 namespace jungle::util {
 
 class type_id {
+    template<typename T>
+    constexpr static u8 identifier = 0;
+
 public:
     using type_hash = hash_val;
 
-    constexpr type_id() noexcept
-            : m_hash{} {}
-
-    constexpr type_id(const type_id &) noexcept = default;
+    constexpr type_id(const type_id &) = default;
     type_id &operator=(const type_id &) = delete;
 
-    constexpr type_id(type_id &&) noexcept = default;
-    constexpr type_id &operator=(type_id &&rhs) noexcept {
+    constexpr type_id(type_id &&) = default;
+    constexpr type_id &operator=(type_id &&rhs) {
         if (this != &rhs) {
             this->~type_id();
             new (this) type_id(std::move(rhs));
@@ -28,31 +28,31 @@ public:
     }
 
     template<typename T>
-    consteval static type_id of() noexcept {
-        constexpr auto name = std::meta::display_string_of(^^T);
-        const auto hash = hash_str(name);
-        return type_id{name, hash};
+    consteval static type_id of() {
+        constexpr auto type = std::meta::dealias(^^T);
+        constexpr auto name = std::meta::display_string_of(type);
+        return type_id{&identifier<T>, name};
     }
 
-    constexpr std::string_view name() const noexcept { return m_name; }
+    consteval static type_id none() { return type_id{nullptr, "<none>"}; }
 
-    constexpr const type_hash &hash() const noexcept { return m_hash; }
+    constexpr std::string_view name() const { return m_name; }
 
-    constexpr bool operator==(const type_id &rhs) const noexcept {
+    constexpr bool operator==(const type_id &rhs) const {
         return
 #ifndef NDEBUG
             this->m_name == rhs.m_name &&
 #endif
-            this->m_hash == rhs.m_hash;
+            this->m_identifier == rhs.m_identifier;
     }
 
 private:
-    consteval type_id(std::string_view name, type_hash hash) noexcept
-            : m_name{name}
-            , m_hash{hash} {}
+    consteval type_id(const u8 *identifier, std::string_view name)
+            : m_identifier{identifier}
+            , m_name{name} {}
 
+    const u8 *m_identifier{nullptr};
     const std::string_view m_name;
-    const type_hash m_hash;
 };
 
 };  // namespace jungle::util

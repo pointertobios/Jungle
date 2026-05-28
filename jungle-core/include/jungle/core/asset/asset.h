@@ -12,16 +12,14 @@ class AssetID {
     static constexpr std::array<u64, 2> NONE{0, 0};
 
 public:
-    constexpr AssetID() noexcept = default;
-    constexpr AssetID(const AssetID &) noexcept = default;
-    constexpr AssetID &operator=(const AssetID &) noexcept = default;
-    constexpr AssetID(AssetID &&) noexcept = default;
-    constexpr AssetID &operator=(AssetID &&) noexcept = default;
+    constexpr AssetID() = default;
+    constexpr AssetID(const AssetID &) = default;
+    constexpr AssetID &operator=(const AssetID &) = default;
+    constexpr AssetID(AssetID &&) = default;
+    constexpr AssetID &operator=(AssetID &&) = default;
 
-    constexpr operator bool() const noexcept { return m_id != NONE; }
-    constexpr bool operator==(const AssetID &other) const noexcept {
-        return m_id == other.m_id;
-    }
+    constexpr operator bool() const { return m_id != NONE; }
+    constexpr bool operator==(const AssetID &other) const { return m_id == other.m_id; }
 
     ustr debug() const;
 
@@ -33,7 +31,7 @@ private:
 
 template<>
 struct std::hash<jungle::core::asset::AssetID> {
-    std::size_t operator()(const jungle::core::asset::AssetID &id) const noexcept {
+    std::size_t operator()(const jungle::core::asset::AssetID &id) const {
         return id.m_id[0] ^ (id.m_id[1] << 1);
     }
 };
