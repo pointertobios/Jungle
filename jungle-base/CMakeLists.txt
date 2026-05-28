@@ -3,6 +3,8 @@ set(IPREF "include/jungle") # Include prefix for headers
 set(JUNGLE_HEADERS
     ${IPREF}/concepts.h
     ${IPREF}/container/hash_map.h
+    ${IPREF}/serde/serde.h
+    ${IPREF}/serde/text.h
     ${IPREF}/types/int.h
     ${IPREF}/types/uchar.h
     ${IPREF}/util/murmur.h
@@ -13,7 +15,6 @@ set(JUNGLE_HEADERS
     ${IPREF}/meta.h
     ${IPREF}/panic.h
     ${IPREF}/preusing.h
-    ${IPREF}/serde.h
 )
 
 set(JUNGLE_SOURCES
@@ -51,11 +52,12 @@ target_precompile_headers(jungle-test PUBLIC include/jungle/test/test.h)
 target_link_libraries(jungle-test PUBLIC jungle::base)
 add_library(jungle::test ALIAS jungle-test)
 
-set(JUNGLE_UNIT_TEST_SOURCES
-unit_tests/hash_map.cpp
-)
-
 # Unit Tests
+
+set(JUNGLE_UNIT_TEST_SOURCES
+    unit_tests/hash_map.cpp
+    unit_tests/serde_text.cpp
+)
 
 add_executable(jungle-base-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})
 target_link_libraries(jungle-base-unit-tests PUBLIC jungle::test)

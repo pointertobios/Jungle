@@ -7,7 +7,7 @@
 
 namespace jungle::serde {
 
-template<typename = void>
+template<typename>
 class SerializeTarget;
 
 template<typename T>
@@ -15,7 +15,7 @@ concept SerializeTargetImpl =
     std::derived_from<T, SerializeTarget<T>> && !std::is_same_v<T, SerializeTarget<T>>
     && std::is_default_constructible_v<T> && requires(T t) {
            typename T::result_type;
-           { t.deliver_result() } -> std::same_as<typename T::result_type &&>;
+           { t.deliver_result() } -> std::same_as<typename T::result_type>;
        };
 
 template<SerializeTargetImpl Target, typename T>
@@ -28,8 +28,17 @@ inline typename Target::result_type serialize(T &&value) {
     return target.deliver_result();
 }
 
+consteval bool is_serde_customizer(const std::meta::info templ_) {
+    auto templ = std::meta::dealias(templ_);
+    if (!std::meta::is_class_template(templ)) {
+        return false;
+    }
+    if ()
+    return true;
+}
+
 template<template<typename> typename Custr>
-concept Customizer = requires(Custr<int> c, SerializeTarget<void> &target) {
+concept Customizer = requires(Custr<int> c, SerializeTarget<long> &target) {
     std::is_default_constructible_v<decltype(c)>;
     c.serialize(std::declval<int>(), target);
 };
@@ -48,8 +57,8 @@ inline constexpr struct {
 inline constexpr struct {
 } field;
 
-template<SerializeTargetImpl Target>
-class SerializeTarget<Target> {
+template<typename Target>
+class SerializeTarget {
     Target &self() { return static_cast<Target &>(*this); }
     const Target &self() const { return static_cast<const Target &>(*this); }
 
@@ -60,7 +69,7 @@ public:
     constexpr SerializeTarget(SerializeTarget &&) = default;
     constexpr SerializeTarget &operator=(SerializeTarget &&) = default;
 
-    Target spawn_subtarget() const
+    Target spawn_subtarget()
         requires std::same_as<decltype(self().spawn_subtarget()), Target>
     {
         return self().spawn_subtarget();
@@ -94,7 +103,15 @@ public:
     }
 
     template<std::ranges::range R>
-    void serialize_range(const R &range) {
+    void serialize_range(const R &range)
+        requires(
+            std::same_as<decltype(self().serialize_range_head(std::declval<std::string_view>())), void>
+            && std::same_as<decltype(self().serialize_range_element_end()), void>
+            && std::same_as<
+                decltype(self().serialize_range_tail(
+                    std::declval<std::string_view>(), std::declval<usize>())),
+                void>)
+    {
         constexpr auto element_type_identifier =
             std::meta::identifier_of(std::meta::dealias(^^std::ranges::range_value_t<R>));
 
@@ -104,6 +121,7 @@ public:
         for (const auto &elem : range) {
             auto subtarget = spawn_subtarget();
             serialize(elem, subtarget);
+            self().serialize_range_element_end();
             size += 1;
         }
 
@@ -113,11 +131,17 @@ public:
     template<class T>
     void serialize_class_object(const T &obj)
         requires(
-            std::same_as<decltype(self().serialize_class_head(std::declval<std::meta::info>())), void>
+            std::same_as<decltype(self().serialize_class_head(std::declval<std::string_view>())), void>
             && std::same_as<decltype(self().serialize_class_field(std::declval<std::string_view>())), void>
-            && std::same_as<decltype(self().serialize_class_tail(std::declval<std::meta::info>())), void>)
+            && std::same_as<decltype(self().serialize_class_field_end()), void>
+            && std::same_as<decltype(self().serialize_class_tail(std::declval<std::string_view>())), void>)
     {
-        constexpr auto type_identifier = std::meta::identifier_of(^^T);
+        std::string_view type_identifier;
+        if constexpr (std::meta::has_identifier(^^T)) {
+            type_identifier = std::meta::identifier_of(^^T);
+        } else {
+            type_identifier = "<unnamed>";
+        }
 
         self().serialize_class_head(type_identifier);
 
@@ -145,6 +169,7 @@ public:
                     // clang-format on
                     customizer_instance.serialize(obj.[:m:], subtarget);
                 }
+                self().serialize_class_field_end();
             }
         }
 
@@ -157,12 +182,12 @@ protected:
 
 template<SerializeTargetImpl Target, typename T>
 inline void serialize(const T &value, Target &target) {
-    if constexpr (std::integral<T>) {
+    if constexpr (std::same_as<T, bool>) {
+        target.serialize_bool(value);
+    } else if constexpr (std::integral<T>) {
         target.serialize_integral(value);
     } else if constexpr (std::floating_point<T>) {
         target.serialize_floating_point(value);
-    } else if constexpr (std::same_as<T, bool>) {
-        target.serialize_bool(value);
     } else if constexpr (std::is_enum_v<T>) {
         target.serialize_enum(value);
     } else if constexpr (std::ranges::range<T>) {

@@ -3,6 +3,7 @@
 #include "jungle/core/ecs/entity.h"
 #include "jungle/meta.h"
 #include "jungle/preusing.h"
+#include "jungle/serde/text.h"
 
 using namespace jungle;
 
@@ -56,4 +57,6 @@ int main() {
     std::println("{}", debug(s));
     jungle::meta::has_template_annotation<^^jungle::core::ecs::Entity>(^^annotation_test);
     std::println("{}", type_id::of<std::vector<int>>().name());
+
+    std::println("{}", serde::serialize<serde::TextTarget>(s));
 }

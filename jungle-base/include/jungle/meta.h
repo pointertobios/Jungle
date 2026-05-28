@@ -34,8 +34,9 @@ consteval bool has_annotation(const std::meta::info type, const Anno _) {
 template<std::meta::info Instance>
 consteval bool has_template_annotation(const std::meta::info temp_anno) {
     template for (constexpr auto anno : std::define_static_array(std::meta::annotations_of(Instance))) {
-        if constexpr (std::meta::has_template_arguments(anno)) {
-            if (std::meta::template_of(anno) == temp_anno) {
+        constexpr auto anno_type = std::meta::remove_const(std::meta::type_of(anno));
+        if constexpr (std::meta::has_template_arguments(anno_type)) {
+            if (std::meta::template_of(anno_type) == std::meta::type_of(temp_anno)) {
                 return true;
             }
         }
@@ -54,8 +55,9 @@ consteval bool has_template_annotation(const std::meta::info temp_anno) {
 template<std::meta::info Instance>
 consteval std::meta::info nth_template_annotation_of(usize nth, const std::meta::info temp_anno) {
     template for (constexpr auto anno : std::define_static_array(std::meta::annotations_of(Instance))) {
-        if constexpr (std::meta::has_template_arguments(anno)) {
-            if (std::meta::template_of(anno) == temp_anno) {
+        constexpr auto anno_type = std::meta::remove_const(std::meta::type_of(anno));
+        if constexpr (std::meta::has_template_arguments(anno_type)) {
+            if (std::meta::template_of(anno_type) == std::meta::type_of(temp_anno)) {
                 if (nth == 0) {
                     return anno;
                 } else {
