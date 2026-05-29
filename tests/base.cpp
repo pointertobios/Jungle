@@ -55,7 +55,7 @@ int main() {
     std::vector l{Color::Red, Color::Green, Color::Blue};
     std::println("{}", debug(entity));
     std::println("{}", debug(s));
-    jungle::meta::has_template_annotation<^^jungle::core::ecs::Entity>(^^annotation_test);
+    jungle::meta::has_template_annotation<^^jungle::core::ecs::Entity, ^^annotation_test>();
     std::println("{}", type_id::of<std::vector<int>>().name());
 
     std::println("{}", serde::serialize<serde::TextTarget>(s));

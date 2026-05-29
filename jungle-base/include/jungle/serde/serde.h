@@ -7,6 +7,37 @@
 
 namespace jungle::serde {
 
+namespace detail {
+
+class TraitTarget {
+public:
+    using result_type = bool;
+
+    bool deliver_result() { return false; }
+
+    template<std::integral I>
+    void serialize_integral(I) {}
+
+    template<std::floating_point F>
+    void serialize_floating_point(F) {}
+
+    void serialize_bool(bool) {}
+
+    template<concepts::is_enum E>
+    void serialize_enum(E) {}
+
+    void serialize_range_head(std::string_view) {}
+    void serialize_range_element_end() {}
+    void serialize_range_tail(std::string_view, usize) {}
+
+    void serialize_class_head(std::string_view) {}
+    void serialize_class_field(std::string_view) {}
+    void serialize_class_field_end() {}
+    void serialize_class_tail(std::string_view) {}
+};
+
+};  // namespace detail
+
 template<typename>
 class SerializeTarget;
 
@@ -28,20 +59,18 @@ inline typename Target::result_type serialize(T &&value) {
     return target.deliver_result();
 }
 
-consteval bool is_serde_customizer(const std::meta::info templ_) {
-    auto templ = std::meta::dealias(templ_);
-    if (!std::meta::is_class_template(templ)) {
+template<template<typename> typename Custr>
+consteval bool is_customizer() {
+    if constexpr (!std::is_default_constructible_v<Custr<int>>) {
         return false;
     }
-    if ()
-    return true;
+    return requires(Custr<int> customizer, int value, detail::TraitTarget &target) {
+        customizer.serialize(value, target);
+    };
 }
 
 template<template<typename> typename Custr>
-concept Customizer = requires(Custr<int> c, SerializeTarget<long> &target) {
-    std::is_default_constructible_v<decltype(c)>;
-    c.serialize(std::declval<int>(), target);
-};
+concept Customizer = is_customizer<Custr>();
 
 template<template<typename> typename Custr>
     requires(Customizer<Custr>)
@@ -150,7 +179,7 @@ public:
         constexpr auto ctx = std::meta::access_context::unchecked();
         template for (constexpr auto m : std::define_static_array(std::meta::members_of(^^T, ctx))) {
             constexpr bool marked_as_field = meta::has_annotation(m, field);
-            constexpr bool customized_field = meta::has_template_annotation<m>(^^customized);
+            constexpr bool customized_field = meta::has_template_annotation<m, ^^customized>();
             if constexpr (std::meta::is_nonstatic_data_member(m)) {
                 self().serialize_class_field(std::meta::identifier_of(m));
                 auto subtarget = spawn_subtarget();
@@ -161,9 +190,7 @@ public:
                 } else if constexpr (
                     (!customized_class && customized_field)
                     || (customized_class && marked_as_field && customized_field)) {
-                    constexpr auto customized_anno = meta::nth_template_annotation_of<m>(0, ^^customized);
-                    constexpr auto customizer = std::define_static_array(
-                        std::meta::template_arguments_of(std::meta::type_of(customized_anno)))[0];
+                    constexpr auto customizer = meta::nth_template_annotation_argument_of<m, ^^customized>(0);
                     // clang-format off
                     typename [:customizer:]<T> customizer_instance{};
                     // clang-format on

@@ -46,11 +46,7 @@ struct[[= jungle::serde::customize]] serde_text_test_marked_fields {
 
 template<typename T>
 struct serde_text_test_plus_thousand {
-    template<jungle::serde::SerializeTargetImpl Target>
-        requires std::integral<T>
-    void serialize(T value, Target &target) const {
-        target.serialize_integral(value + 1000);
-    }
+    void serialize(T value, auto &target) const { target.serialize_integral(value + 1000); }
 };
 
 static_assert(jungle::serde::Customizer<serde_text_test_plus_thousand>);
@@ -76,8 +72,8 @@ static_assert(
 static_assert(
     std::meta::constant_of(std::meta::annotations_of(^^serde_text_test_marked_fields::kept)[0])
     == std::meta::reflect_constant(jungle::serde::field));
-static_assert(jungle::meta::has_template_annotation<^^serde_text_test_field_customized::value>(
-    ^^jungle::serde::customized));
+static_assert(jungle::meta::has_template_annotation<
+              ^^serde_text_test_field_customized::value, ^^jungle::serde::customized>());
 
 JUNGLE_SYNC_TEST(text_target_serializes_direct_supported_categories) {
     JUNGLE_SYNC_ASSERT(
