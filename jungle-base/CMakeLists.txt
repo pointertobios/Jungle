@@ -4,6 +4,8 @@ set(JUNGLE_HEADERS
     ${IPREF}/concepts.h
     ${IPREF}/container/hash_map.h
     ${IPREF}/serde/serde.h
+    ${IPREF}/serde/serialize.h
+    ${IPREF}/serde/deserialize.h
     ${IPREF}/serde/text.h
     ${IPREF}/types/int.h
     ${IPREF}/types/uchar.h

@@ -26,7 +26,7 @@ consteval bool has_annotation(const std::meta::info type, const auto anno) {
  * @brief 判断实体是否含有指定模板注解的实例
  *
  * @tparam Instance 被判断的实体
- * @tparam TemplateAnnotation 模板注解
+ * @tparam TemplateAnnotation 模板注解，要求模板注解的类型本身必须是和注解本身相同的模板
  * @return bool
  */
 template<std::meta::info Instance, std::meta::info TemplateAnnotation>
@@ -46,15 +46,18 @@ consteval bool has_template_annotation() {
 }
 
 /**
- * @brief 获取实体上指定模板注解的第 N 个实例
+ * @brief 获取实体上指定模板注解的第 N 个模板参数
  *
  * @tparam Instance 被查询的实体
  * @tparam TemplateAnnotation 模板注解
- * @param nth 第 N 个实例
- * @return std::meta::info 注解实例的反射信息，如果未找到则返回 ^^void
+ * @param nth 模板注解第 nth 个模板参数
+ * @return std::meta::info 注解实例的反射信息
  */
 template<std::meta::info Instance, std::meta::info TemplateAnnotation>
 consteval std::meta::info nth_template_annotation_argument_of(usize nth) {
+    static_assert(
+        has_template_annotation<Instance, TemplateAnnotation>(),
+        "Instance should have the specified template annotation");
     template for (constexpr auto anno_obj : std::define_static_array(std::meta::annotations_of(Instance))) {
         constexpr auto anno = std::meta::constant_of(anno_obj);
         if constexpr (std::meta::has_template_arguments(std::meta::type_of(anno))) {
@@ -66,7 +69,23 @@ consteval std::meta::info nth_template_annotation_argument_of(usize nth) {
             }
         }
     }
-    return ^^void;
+}
+
+/**
+ * @brief 判断模板实例是否是指定模板的一个实例
+ *
+ * @param specialization 模板实例
+ * @param template_info 模板信息
+ * @return bool
+ */
+template<std::meta::info Specialization, std::meta::info Template>
+consteval bool is_specialization_of_template() {
+    constexpr auto specialization = std::meta::dealias(Specialization);
+    constexpr auto template_info = std::meta::dealias(Template);
+    if (!std::meta::has_template_arguments(specialization)) {
+        return false;
+    }
+    return std::meta::template_of(specialization) == template_info;
 }
 
 consteval std::vector<std::meta::info>

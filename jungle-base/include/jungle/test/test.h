@@ -21,12 +21,13 @@ bool add_sync_test(
     static bool _added_test_##name = jungle::test::add_sync_test(#name, test_##name); \
     jungle::test::test_result test_##name()
 
-#define JUNGLE_SYNC_ASSERT(expr, ...)                                                      \
-    do {                                                                                   \
-        if (!(expr)) {                                                                     \
-            return std::unexpected(                                                        \
-                jungle::ustr::format("Assertion failed: {}\n  {}", #expr, ##__VA_ARGS__)); \
-        }                                                                                  \
+#define JUNGLE_SYNC_ASSERT(expr, ...)                                                         \
+    do {                                                                                      \
+        if (!(expr)) {                                                                        \
+            return std::unexpected(                                                           \
+                jungle::ustr::format(                                                         \
+                    "Assertion failed: {}\n  {}", #expr, jungle::ustr::format(__VA_ARGS__))); \
+        }                                                                                     \
     } while (0)
 
 #define JUNGLE_SYNC_SUCCESS() return std::expected<void, ustr>{};

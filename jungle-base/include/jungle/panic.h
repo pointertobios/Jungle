@@ -15,19 +15,3 @@ template<typename... Args>
 }
 
 };  // namespace jungle
-
-#ifdef NDEBUG
-
-#    define jungle_assert(expr, ...)                                                          \
-        do {                                                                                  \
-            if (!(expr)) [[unlikely]] {                                                       \
-                auto msg = jungle::ustr(__VA_ARGS__);                                         \
-                jungle::panic("'{}' assert failed{}{}", #expr, msg.empty() ? "" : ": ", msg); \
-            }                                                                                 \
-        } while (0)
-
-#else
-
-#    define jungle_assert(expr, ...) (void)(expr);
-
-#endif
