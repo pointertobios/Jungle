@@ -11,11 +11,11 @@ namespace jungle::serde {
 
 class TextTarget : public SerializeTarget<TextTarget> {
 public:
-    using result_type = ustr;
+    using target_type = ustr;
 
     TextTarget() = default;
 
-    result_type deliver_result() { return std::move(m_result); }
+    target_type deliver_result() { return std::move(m_result); }
 
     TextTarget spawn_subtarget() { return TextTarget{m_result}; }
 

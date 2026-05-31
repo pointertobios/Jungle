@@ -3,9 +3,6 @@
 #include <concepts>
 #include <type_traits>
 
-#include "jungle/meta.h"
-#include "jungle/util/type_id.h"
-
 namespace jungle::serde {
 
 namespace detail {
@@ -46,22 +43,27 @@ template<typename T>
 concept SerializeTargetImpl =
     std::derived_from<T, SerializeTarget<T>> && !std::is_same_v<T, SerializeTarget<T>>
     && std::is_default_constructible_v<T> && requires(T t) {
-           typename T::result_type;
-           { t.deliver_result() } -> std::same_as<typename T::result_type>;
+           typename T::target_type;
+           { t.deliver_result() } -> std::same_as<typename T::target_type>;
+       };
+
+template<typename>
+class DeserializeSource;
+
+template<typename T>
+concept DeserializeSourceImpl =
+    std::derived_from<T, DeserializeSource<T>> && !std::is_same_v<T, DeserializeSource<T>>
+    && std::is_default_constructible_v<T> && requires(T t) {
+           typename T::source_type;
+           { t.provide_source(std::declval<const typename T::source_type &>()) } -> std::same_as<void>;
        };
 
 template<template<typename> typename Custr>
-consteval bool is_customizer() {
-    if constexpr (!std::is_default_constructible_v<Custr<int>>) {
-        return false;
-    }
-    return requires(Custr<int> customizer, int value, detail::TraitTarget &target) {
-        customizer.serialize(value, target);
-    };
-}
-
-template<template<typename> typename Custr>
-concept Customizer = is_customizer<Custr>();
+concept Customizer = std::is_default_constructible_v<Custr<int>>
+                     && requires(Custr<int> customizer, int value, detail::TraitTarget &target) {
+                            { customizer.serialize(value, target) } -> std::same_as<void>;
+                            // { customizer.deserialize<int>(target) } -> std::same_as<int>;
+                        };
 
 template<template<typename> typename Custr>
     requires(Customizer<Custr>)

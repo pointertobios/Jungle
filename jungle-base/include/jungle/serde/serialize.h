@@ -4,6 +4,7 @@
 
 #include "jungle/meta.h"
 #include "jungle/serde/serde.h"
+#include "jungle/util/type_id.h"
 
 namespace jungle::serde {
 
@@ -11,7 +12,7 @@ template<SerializeTargetImpl Target, typename T>
 inline void serialize(const T &value, Target &target);
 
 template<SerializeTargetImpl Target, typename T>
-inline typename Target::result_type serialize(T &&value) {
+inline typename Target::target_type serialize(T &&value) {
     Target target{};
     serialize(value, target);
     return target.deliver_result();
@@ -35,6 +36,12 @@ public:
         return self().spawn_subtarget();
     }
 
+    void serialize_bool(const bool &value)
+        requires std::same_as<decltype(self().serialize_bool(std::declval<const bool &>())), void>
+    {
+        self().serialize_bool(value);
+    }
+
     template<std::integral I>
     void serialize_integral(const I &value)
         requires std::same_as<decltype(self().serialize_integral(std::declval<const I &>())), void>
@@ -47,12 +54,6 @@ public:
         requires std::same_as<decltype(self().serialize_floating_point(std::declval<const F &>())), void>
     {
         self().serialize_floating_point(value);
-    }
-
-    void serialize_bool(const bool &value)
-        requires std::same_as<decltype(self().serialize_bool(std::declval<const bool &>())), void>
-    {
-        self().serialize_bool(value);
     }
 
     template<concepts::is_enum T>
