@@ -1,6 +1,6 @@
 #include "jungle/meta.h"
-#include "jungle/serde/text.h"
 #include "jungle/test/test.h"
+#include "text.h"
 
 #include <array>
 #include <optional>

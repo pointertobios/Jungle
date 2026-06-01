@@ -6,7 +6,6 @@ set(JUNGLE_HEADERS
     ${IPREF}/serde/serde.h
     ${IPREF}/serde/serialize.h
     ${IPREF}/serde/deserialize.h
-    ${IPREF}/serde/text.h
     ${IPREF}/types/int.h
     ${IPREF}/types/uchar.h
     ${IPREF}/util/murmur.h
