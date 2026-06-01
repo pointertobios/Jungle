@@ -24,8 +24,8 @@ class SerializeTarget {
     const Target &self() const { return static_cast<const Target &>(*this); }
 
 public:
-    constexpr SerializeTarget(const SerializeTarget &) = delete;
-    constexpr SerializeTarget &operator=(const SerializeTarget &) = delete;
+    SerializeTarget(const SerializeTarget &) = delete;
+    SerializeTarget &operator=(const SerializeTarget &) = delete;
 
     constexpr SerializeTarget(SerializeTarget &&) = default;
     constexpr SerializeTarget &operator=(SerializeTarget &&) = default;
@@ -128,9 +128,9 @@ public:
                     if constexpr (customized_field) {
                         constexpr auto customizer =
                             meta::nth_template_annotation_argument_of<m, ^^customize>(0);
-                        // clang-format off
-                        typename [:std::meta::substitute(customizer, {std::meta::type_of(m)}):] customizer_instance{};
-                        // clang-format on
+                        constexpr auto customizer_type =
+                            std::meta::substitute(customizer, {std::meta::type_of(m)});
+                        typename[:customizer_type:] customizer_instance{};
                         customizer_instance.serialize(obj.[:m:], subtarget);
                     } else {
                         serialize(obj.[:m:], subtarget);

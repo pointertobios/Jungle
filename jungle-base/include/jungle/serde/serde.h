@@ -32,6 +32,29 @@ public:
     void serialize_class_field(std::string_view) {}
     void serialize_class_field_end() {}
     void serialize_class_tail(std::string_view) {}
+
+    void deserialize_bool(bool &) {}
+
+    template<std::integral I>
+    void deserialize_integral(I &) {}
+
+    template<std::floating_point F>
+    void deserialize_floating_point(F &) {}
+
+    template<concepts::is_enum E>
+    void deserialize_enum(E &) {}
+
+    bool deserialize_optional_nonnull() { return {}; }
+
+    void deserialize_range_head() {}
+    bool deserialize_range_has_element() { return {}; }
+    void deserialize_range_element_end() {}
+    void deserialize_range_tail() {}
+
+    std::string_view deserialize_class_head() { return {}; }
+    std::string_view deserialize_class_field() { return {}; }
+    void deserialize_class_field_end() {}
+    void deserialize_class_tail() {}
 };
 
 };  // namespace detail
@@ -62,7 +85,7 @@ template<template<typename> typename Custr>
 concept Customizer = std::is_default_constructible_v<Custr<int>>
                      && requires(Custr<int> customizer, int value, detail::TraitTarget &target) {
                             { customizer.serialize(value, target) } -> std::same_as<void>;
-                            // { customizer.deserialize<int>(target) } -> std::same_as<int>;
+                            { customizer.deserialize(value, target) } -> std::same_as<int>;
                         };
 
 template<template<typename> typename Custr>

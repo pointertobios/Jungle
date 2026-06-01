@@ -9,7 +9,10 @@
 
 namespace {
 
+using jungle::ustr;
+using jungle::serde::deserialize;
 using jungle::serde::serialize;
+using jungle::serde::TextSource;
 using jungle::serde::TextTarget;
 using namespace std::string_view_literals;
 
@@ -49,6 +52,11 @@ struct[[= jungle::serde::customized]] serde_text_test_marked_fields {
 template<typename T>
 struct serde_text_test_plus_thousand {
     void serialize(const T &value, auto &target) const { target.serialize_integral(value + 1000); }
+    template<typename U>
+    U deserialize(U &value, auto &source) const {
+        source.template deserialize_integral<U>(value);
+        return value - 1000;
+    }
 };
 
 static_assert(jungle::serde::Customizer<serde_text_test_plus_thousand>);
@@ -355,6 +363,272 @@ JUNGLE_SYNC_TEST(text_target_serializes_class_with_range_member) {
     JUNGLE_SYNC_ASSERT(
         serialized.view() == "serde_text_test_with_range_member{tag:5,items:[10,20,30,],}"sv,
         "range members inside a class should serialize recursively");
+    return {};
+}
+
+template<typename T>
+T deserialize_from_text(std::string_view text) {
+    return deserialize<T, TextSource>(ustr{text});
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_bool) {
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<bool>("true") == true, "deserialized true should match literal true");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<bool>("false") == false, "deserialized false should match literal false");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_integers) {
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<int>("42") == 42, "positive integer should deserialize correctly");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<int>("-1") == -1, "negative integer should deserialize correctly");
+    JUNGLE_SYNC_ASSERT(deserialize_from_text<int>("0") == 0, "zero should deserialize correctly");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<int>("-42") == -42, "negative integer should include minus sign");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<long long>("9223372036854775807") == 9223372036854775807LL,
+        "large int64 should deserialize correctly");
+    JUNGLE_SYNC_ASSERT(
+        static_cast<int>(deserialize_from_text<uint8_t>("255")) == 255,
+        "uint8_t max should deserialize correctly");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<int8_t>("-128") == int8_t{-128}, "int8_t min should deserialize correctly");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_floating_point) {
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<double>("2.5") == 2.5, "positive float should deserialize correctly");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<double>("-3.14") == -3.14, "negative float should deserialize correctly");
+    JUNGLE_SYNC_ASSERT(deserialize_from_text<double>("0") == 0.0, "zero float should deserialize");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<double>("0.5") == 0.5, "float between 0 and 1 should deserialize correctly");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_enum) {
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<serde_text_test_color>("serde_text_test_color::green")
+            == serde_text_test_color::green,
+        "enum should deserialize from TypeName::EnumeratorName");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<serde_text_test_color>("serde_text_test_color::red")
+            == serde_text_test_color::red,
+        "enum red should deserialize correctly");
+    JUNGLE_SYNC_ASSERT(
+        deserialize_from_text<serde_text_test_color>("serde_text_test_color::blue")
+            == serde_text_test_color::blue,
+        "enum blue should deserialize correctly");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_optional) {
+    auto with_value = deserialize_from_text<std::optional<int>>("optional##42");
+    JUNGLE_SYNC_ASSERT(with_value.has_value(), "optional##... should produce a value");
+    JUNGLE_SYNC_ASSERT(*with_value == 42, "optional value should deserialize correctly");
+
+    auto nullopt = deserialize_from_text<std::optional<int>>("optional##nullopt");
+    JUNGLE_SYNC_ASSERT(!nullopt.has_value(), "optional##nullopt should produce nullopt");
+
+    auto bool_opt = deserialize_from_text<std::optional<bool>>("optional##true");
+    JUNGLE_SYNC_ASSERT(bool_opt.has_value() && *bool_opt == true, "optional bool should deserialize");
+
+    auto empty_double = deserialize_from_text<std::optional<double>>("optional##nullopt");
+    JUNGLE_SYNC_ASSERT(!empty_double.has_value(), "nullopt of any type should produce empty optional");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_range) {
+    auto vec = deserialize_from_text<std::vector<int>>("[1,2,3,]");
+    std::vector<int> expected{1, 2, 3};
+    JUNGLE_SYNC_ASSERT(vec == expected, "range should deserialize all elements");
+
+    auto empty_vec = deserialize_from_text<std::vector<int>>("[]");
+    JUNGLE_SYNC_ASSERT(empty_vec.empty(), "empty range should deserialize to empty vector");
+
+    auto nested = deserialize_from_text<std::vector<std::vector<int>>>("[[1,2,],[3,4,5,],[],]");
+    std::vector<std::vector<int>> expected_nested{{1, 2}, {3, 4, 5}, {}};
+    JUNGLE_SYNC_ASSERT(nested == expected_nested, "nested ranges should deserialize recursively");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_round_trip_nested_objects) {
+    serde_text_test_outer original{
+        .number = 7,
+        .ratio = 2.5,
+        .flag = true,
+        .color = serde_text_test_color::blue,
+        .inner = serde_text_test_inner{.value = 11, .enabled = false},
+        .items = {1, 2, 3}};
+    auto text = serialize_to_text(original);
+    auto restored = deserialize_from_text<serde_text_test_outer>(text.view());
+    auto re_serialized = serialize_to_text(restored);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == text.view(),
+        "serialize → deserialize → serialize should produce identical text");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_empty_struct) {
+    auto empty = deserialize_from_text<serde_empty_struct>("serde_empty_struct{}");
+    auto re_serialized = serialize_to_text(empty);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == "serde_empty_struct{}"sv, "empty struct should survive round-trip unchanged");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_marked_fields) {
+    auto restored = deserialize_from_text<serde_text_test_marked_fields>(
+        "serde_text_test_marked_fields{kept:7,enabled:true,}");
+    auto re_serialized = serialize_to_text(restored);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == "serde_text_test_marked_fields{kept:7,enabled:true,}"sv,
+        "marked-fields class should round-trip only the [[=field]] members");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_all_marked_fields) {
+    auto restored =
+        deserialize_from_text<serde_text_test_all_marked>("serde_text_test_all_marked{a:10,b:false,c:3,}");
+    auto re_serialized = serialize_to_text(restored);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == "serde_text_test_all_marked{a:10,b:false,c:3,}"sv,
+        "all-fields-marked class should round-trip correctly");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_round_trip_class_with_range_member) {
+    serde_text_test_with_range_member original{.tag = 5, .items = {10, 20, 30}};
+    auto text = serialize_to_text(original);
+    auto restored = deserialize_from_text<serde_text_test_with_range_member>(text.view());
+    auto re_serialized = serialize_to_text(restored);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == text.view(), "class with range member should round-trip correctly");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_round_trip_optional_struct) {
+    {
+        serde_optional_struct original{.id = 1, .maybe_score = 100};
+        auto text = serialize_to_text(original);
+        auto restored = deserialize_from_text<serde_optional_struct>(text.view());
+        auto re_serialized = serialize_to_text(restored);
+        JUNGLE_SYNC_ASSERT(
+            re_serialized.view() == text.view(), "struct with optional value field should round-trip");
+    }
+    {
+        serde_optional_struct original{.id = 2, .maybe_score = {}};
+        auto text = serialize_to_text(original);
+        auto restored = deserialize_from_text<serde_optional_struct>(text.view());
+        auto re_serialized = serialize_to_text(restored);
+        JUNGLE_SYNC_ASSERT(
+            re_serialized.view() == text.view(), "struct with optional nullopt field should round-trip");
+    }
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserializes_optional_of_range) {
+    auto with_vec = deserialize_from_text<std::optional<std::vector<int>>>("optional##[7,8,9,]");
+    JUNGLE_SYNC_ASSERT(with_vec.has_value(), "optional<vector> with value should have a value");
+    std::vector<int> expected{7, 8, 9};
+    JUNGLE_SYNC_ASSERT(*with_vec == expected, "optional<vector> should deserialize inner vector");
+
+    auto null_vec = deserialize_from_text<std::optional<std::vector<int>>>("optional##nullopt");
+    JUNGLE_SYNC_ASSERT(!null_vec.has_value(), "optional<vector> nullopt should produce nullopt");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_round_trip_unnamed_type) {
+    struct {
+        int count;
+        bool ready;
+    } original{.count = 3, .ready = true};
+    auto text = serialize_to_text(original);
+    auto restored = deserialize_from_text<std::remove_cvref_t<decltype(original)>>(text.view());
+    auto re_serialized = serialize_to_text(restored);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == text.view(),
+        "unnamed types should round-trip correctly with <unnamed> placeholder");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_round_trip_field_customized) {
+    serde_text_test_field_customized original{};
+    auto text = serialize_to_text(original);
+    auto restored = deserialize_from_text<serde_text_test_field_customized>(text.view());
+    auto re_serialized = serialize_to_text(restored);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == text.view(),
+        "[[=customize<C>]] field should round-trip through customizer serialize and deserialize");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_round_trip_mixed_annotations) {
+    serde_text_test_mixed_annotations original{};
+    auto text = serialize_to_text(original);
+    auto restored = deserialize_from_text<serde_text_test_mixed_annotations>(text.view());
+    auto re_serialized = serialize_to_text(restored);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == text.view(),
+        "mix of [[=field]] and [[=customize<C>]] should round-trip correctly");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_round_trip_reordered_fields) {
+    serde_text_test_reordered_fields original{};
+    auto text = serialize_to_text(original);
+    auto restored = deserialize_from_text<serde_text_test_reordered_fields>(text.view());
+    auto re_serialized = serialize_to_text(restored);
+
+    JUNGLE_SYNC_ASSERT(
+        re_serialized.view() == text.view(),
+        "marked fields in declaration order should round-trip correctly");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserialize_into_existing_value) {
+    int value = 0;
+    deserialize<int, TextSource>(ustr{"42"}, value);
+
+    JUNGLE_SYNC_ASSERT(value == 42, "deserialize(payload, value) should write into existing variable");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserialize_with_direct_source) {
+    TextSource source;
+    source.provide_source(ustr{"[1,2,3,]"});
+    std::vector<int> value;
+    deserialize(source, value);
+
+    std::vector<int> expected{1, 2, 3};
+    JUNGLE_SYNC_ASSERT(value == expected, "deserialize(source, value) should fill pre-constructed value");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserialize_overwrites_existing) {
+    bool value = true;
+    deserialize<bool, TextSource>(ustr{"false"}, value);
+
+    JUNGLE_SYNC_ASSERT(value == false, "deserialize(payload, value) should overwrite existing bool");
+    return {};
+}
+
+JUNGLE_SYNC_TEST(text_source_deserialize_optional_clears_existing) {
+    std::optional<int> value{999};
+    deserialize<std::optional<int>, TextSource>(ustr{"optional##nullopt"}, value);
+
+    JUNGLE_SYNC_ASSERT(!value.has_value(), "writing nullopt should clear existing optional value");
     return {};
 }
 
