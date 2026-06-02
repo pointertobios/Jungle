@@ -24,6 +24,9 @@ public:
     template<concepts::is_enum E>
     void serialize_enum(E) {}
 
+    void serialize_optional_nonnull() {}
+    void serialize_optional_nullopt() {}
+
     void serialize_range_head() {}
     void serialize_range_element_end() {}
     void serialize_range_tail(usize) {}
