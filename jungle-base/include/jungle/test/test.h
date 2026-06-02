@@ -30,6 +30,7 @@ bool add_sync_test(
         }                                                                                     \
     } while (0)
 
-#define JUNGLE_SYNC_SUCCESS() return std::expected<void, ustr>{};
+#define JUNGLE_SYNC_SUCCESS() \
+    return std::expected<void, ustr> {}
 
 };  // namespace jungle::test

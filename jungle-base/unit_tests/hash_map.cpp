@@ -15,7 +15,7 @@ JUNGLE_SYNC_TEST(hash_map_default_state) {
 	JUNGLE_SYNC_ASSERT(map.capacity() == 64, "default constructed map should allocate the default slot count");
 	JUNGLE_SYNC_ASSERT(map.get(1) == nullptr, "missing keys should return a null pointer");
 	JUNGLE_SYNC_ASSERT(map.begin() == map.end(), "empty maps should not expose any iterable entries");
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(hash_map_insert_get_and_duplicate_insert) {
@@ -30,7 +30,7 @@ JUNGLE_SYNC_TEST(hash_map_insert_get_and_duplicate_insert) {
 	auto *second = map.get(2);
 	JUNGLE_SYNC_ASSERT(first != nullptr && *first == 10, "original value should stay retrievable after duplicate insert");
 	JUNGLE_SYNC_ASSERT(second != nullptr && *second == 20, "second inserted value should be retrievable");
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(hash_map_emplace_constructs_values_in_place) {
@@ -41,7 +41,7 @@ JUNGLE_SYNC_TEST(hash_map_emplace_constructs_values_in_place) {
 	auto *value = map.get(7);
 	JUNGLE_SYNC_ASSERT(value != nullptr, "emplaced value should be retrievable");
 	JUNGLE_SYNC_ASSERT(value->first == 3 && value->second == 9, "emplace should preserve constructor arguments");
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(hash_map_remove_missing_and_tombstone_reuse) {
@@ -63,7 +63,7 @@ JUNGLE_SYNC_TEST(hash_map_remove_missing_and_tombstone_reuse) {
 	auto *value = map.get(5);
 	JUNGLE_SYNC_ASSERT(value != nullptr && *value == "five", "inserts after remove should remain retrievable");
 	JUNGLE_SYNC_ASSERT(map.size() == 4, "reinserting after removal should restore the size");
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(hash_map_growth_rehash_preserves_entries) {
@@ -80,7 +80,7 @@ JUNGLE_SYNC_TEST(hash_map_growth_rehash_preserves_entries) {
 		auto *value = map.get(key);
 		JUNGLE_SYNC_ASSERT(value != nullptr && *value == key * 10, "growth rehash must preserve every key-value pair");
 	}
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(hash_map_manual_rehash_can_shrink_sparse_maps) {
@@ -104,7 +104,7 @@ JUNGLE_SYNC_TEST(hash_map_manual_rehash_can_shrink_sparse_maps) {
 		auto *value = map.get(key);
 		JUNGLE_SYNC_ASSERT(value != nullptr && *value == key + 100, "manual shrink rehash must preserve remaining entries");
 	}
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(hash_map_iteration_visits_every_entry_and_allows_mutation) {
@@ -127,7 +127,7 @@ JUNGLE_SYNC_TEST(hash_map_iteration_visits_every_entry_and_allows_mutation) {
 	JUNGLE_SYNC_ASSERT(*map.get(2) == 21, "mutable iteration should expose writable values");
 	JUNGLE_SYNC_ASSERT(*map.get(3) == 31, "mutable iteration should expose writable values");
 	JUNGLE_SYNC_ASSERT(*map.get(4) == 41, "mutable iteration should expose writable values");
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(hash_map_const_access_and_const_iteration) {
@@ -151,7 +151,7 @@ JUNGLE_SYNC_TEST(hash_map_const_access_and_const_iteration) {
 	std::set<int> expected{1, 2, 3};
 	JUNGLE_SYNC_ASSERT(visited == expected, "const iteration should visit each inserted key");
 	JUNGLE_SYNC_ASSERT(sum == 15, "const iteration should expose the stored values");
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(hash_set_insert_duplicate_and_iteration) {
@@ -170,5 +170,5 @@ JUNGLE_SYNC_TEST(hash_set_insert_duplicate_and_iteration) {
 
 	std::set<int> expected{3, 7, 11};
 	JUNGLE_SYNC_ASSERT(visited == expected, "hash_set iteration should expose each unique key exactly once");
-	return {};
+	JUNGLE_SYNC_SUCCESS();
 }
