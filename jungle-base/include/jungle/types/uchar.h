@@ -1,3 +1,6 @@
+// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include <array>
@@ -52,25 +55,25 @@ struct uchar {
     }
 
     /**
-     * @brief 计算 UTF-8 序列中第一个字符的长度
+     * @brief 璁＄畻 UTF-8 搴忓垪涓涓€涓瓧绗︾殑闀垮害
      *
-     * @param utf8 至少包含一个完整 UTF-8 字符的字节序列
-     * @return usize UTF-8 字符的字节长度，或0如果输入无效
+     * @param utf8 鑷冲皯鍖呭惈涓€涓畬鏁?UTF-8 瀛楃鐨勫瓧鑺傚簭鍒?
+     * @return usize UTF-8 瀛楃鐨勫瓧鑺傞暱搴︼紝鎴?濡傛灉杈撳叆鏃犳晥
      */
     static constexpr usize utf8_length(std::span<const i8> utf8);
 
     /**
-     * @brief 从 UTF-8 序列中解析出一个字符
+     * @brief 浠?UTF-8 搴忓垪涓В鏋愬嚭涓€涓瓧绗?
      *
-     * @param utf8 至少包含一个完整 UTF-8 字符的字节序列
-     * @return uchar 解析出的字符，如果输入无效则返回 {uchar::INVALID}
+     * @param utf8 鑷冲皯鍖呭惈涓€涓畬鏁?UTF-8 瀛楃鐨勫瓧鑺傚簭鍒?
+     * @return uchar 瑙ｆ瀽鍑虹殑瀛楃锛屽鏋滆緭鍏ユ棤鏁堝垯杩斿洖 {uchar::INVALID}
      */
     static constexpr uchar from_utf8(std::span<const i8> utf8);
 
     /**
-     * @brief 将字符编码为 UTF-8 序列
+     * @brief 灏嗗瓧绗︾紪鐮佷负 UTF-8 搴忓垪
      *
-     * @return std::array<i8, 4> UTF-8 编码的字节数组，UTF-8 编码长度不足 4 字节时尾部填充 0
+     * @return std::array<i8, 4> UTF-8 缂栫爜鐨勫瓧鑺傛暟缁勶紝UTF-8 缂栫爜闀垮害涓嶈冻 4 瀛楄妭鏃跺熬閮ㄥ～鍏?0
      */
     constexpr std::array<i8, 4> to_utf8() const;
 
@@ -121,11 +124,11 @@ public:
     }
 
     /**
-     * @brief 格式化字符串
+     * @brief 鏍煎紡鍖栧瓧绗︿覆
      *
      * @tparam Args
      * @param fmt
-     * @param args 对于实现了 Debug concept 的类型，优先调用 debug() 产生的字符串进行格式化
+     * @param args 瀵逛簬瀹炵幇浜?Debug concept 鐨勭被鍨嬶紝浼樺厛璋冪敤 debug() 浜х敓鐨勫瓧绗︿覆杩涜鏍煎紡鍖?
      * @return constexpr ustr
      */
     template<typename... Args>

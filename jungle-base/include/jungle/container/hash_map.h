@@ -1,3 +1,6 @@
+// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include <concepts>
@@ -86,7 +89,7 @@ get(const jungle::detail::pair_ref_const<K, V> &p) {
 };  // namespace detail
 
 /**
- * @brief 开放定址哈希表
+ * @brief 寮€鏀惧畾鍧€鍝堝笇琛?
  *
  * @tparam K
  * @tparam V

@@ -1,3 +1,6 @@
+// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include <meta>
@@ -9,9 +12,9 @@
 namespace jungle::meta {
 
 /**
- * @brief 通过注解的类型判断类型是否有注解
- * @param type 被 Anno 值注解的类型反射信息
- * @param anno 注解
+ * @brief 閫氳繃娉ㄨВ鐨勭被鍨嬪垽鏂被鍨嬫槸鍚︽湁娉ㄨВ
+ * @param type 琚?Anno 鍊兼敞瑙ｇ殑绫诲瀷鍙嶅皠淇℃伅
+ * @param anno 娉ㄨВ
  * @return bool
  */
 consteval bool has_annotation(const std::meta::info type, const auto anno) {
@@ -23,10 +26,10 @@ consteval bool has_annotation(const std::meta::info type, const auto anno) {
 }
 
 /**
- * @brief 判断实体是否含有指定模板注解的实例
+ * @brief 鍒ゆ柇瀹炰綋鏄惁鍚湁鎸囧畾妯℃澘娉ㄨВ鐨勫疄渚?
  *
- * @tparam Instance 被判断的实体
- * @tparam TemplateAnnotation 模板注解，要求模板注解的类型本身必须是和注解本身相同的模板
+ * @tparam Instance 琚垽鏂殑瀹炰綋
+ * @tparam TemplateAnnotation 妯℃澘娉ㄨВ锛岃姹傛ā鏉挎敞瑙ｇ殑绫诲瀷鏈韩蹇呴』鏄拰娉ㄨВ鏈韩鐩稿悓鐨勬ā鏉?
  * @return bool
  */
 template<std::meta::info Instance, std::meta::info TemplateAnnotation>
@@ -46,12 +49,12 @@ consteval bool has_template_annotation() {
 }
 
 /**
- * @brief 获取实体上指定模板注解的第 N 个模板参数
+ * @brief 鑾峰彇瀹炰綋涓婃寚瀹氭ā鏉挎敞瑙ｇ殑绗?N 涓ā鏉垮弬鏁?
  *
- * @tparam Instance 被查询的实体
- * @tparam TemplateAnnotation 模板注解
- * @param nth 模板注解第 nth 个模板参数
- * @return std::meta::info 注解实例的反射信息
+ * @tparam Instance 琚煡璇㈢殑瀹炰綋
+ * @tparam TemplateAnnotation 妯℃澘娉ㄨВ
+ * @param nth 妯℃澘娉ㄨВ绗?nth 涓ā鏉垮弬鏁?
+ * @return std::meta::info 娉ㄨВ瀹炰緥鐨勫弽灏勪俊鎭?
  */
 template<std::meta::info Instance, std::meta::info TemplateAnnotation>
 consteval std::meta::info nth_template_annotation_argument_of(usize nth) {
@@ -72,10 +75,10 @@ consteval std::meta::info nth_template_annotation_argument_of(usize nth) {
 }
 
 /**
- * @brief 判断模板实例是否是指定模板的一个实例
+ * @brief 鍒ゆ柇妯℃澘瀹炰緥鏄惁鏄寚瀹氭ā鏉跨殑涓€涓疄渚?
  *
- * @param specialization 模板实例
- * @param template_info 模板信息
+ * @param specialization 妯℃澘瀹炰緥
+ * @param template_info 妯℃澘淇℃伅
  * @return bool
  */
 template<std::meta::info Specialization, std::meta::info Template>

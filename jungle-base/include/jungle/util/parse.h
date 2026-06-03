@@ -1,3 +1,6 @@
+// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include <array>
@@ -10,8 +13,8 @@
 namespace jungle::util {
 
 /**
- * @brief 小端序 Base64 编码惰性视图
- * @details 产生一个 uchar 序列
+ * @brief 灏忕搴?Base64 缂栫爜鎯版€ц鍥?
+ * @details 浜х敓涓€涓?uchar 搴忓垪
  */
 struct base64_encoder_view : public std::ranges::view_interface<base64_encoder_view> {
     struct iterator {

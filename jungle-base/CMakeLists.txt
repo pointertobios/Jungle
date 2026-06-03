@@ -1,3 +1,6 @@
+# Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+# SPDX-License-Identifier: MIT
+
 set(IPREF "include/jungle") # Include prefix for headers
 
 set(JUNGLE_HEADERS

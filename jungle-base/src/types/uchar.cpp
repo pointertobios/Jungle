@@ -1,3 +1,6 @@
+// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+// SPDX-License-Identifier: MIT
+
 #include "jungle/types/uchar.h"
 
 #include "jungle/panic.h"
@@ -204,7 +207,7 @@ void ustr::check_valid(std::span<const i8> utf8) {
     for (usize i = 0; i < utf8.size();) {
         const auto length = uchar::utf8_length(std::span<const i8>(utf8.data() + i, utf8.size() - i));
         if (length == 0) {
-            panic("索引 {} 处存在非法的 UTF-8 序列", i);
+            panic("绱㈠紩 {} 澶勫瓨鍦ㄩ潪娉曠殑 UTF-8 搴忓垪", i);
         }
         i += length;
     }

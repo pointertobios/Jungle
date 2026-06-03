@@ -1,3 +1,6 @@
+// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+// SPDX-License-Identifier: MIT
+
 #include "jungle/container/hash_map.h"
 #include "jungle/test/test.h"
 

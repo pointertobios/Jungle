@@ -1,3 +1,6 @@
+// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+// SPDX-License-Identifier: MIT
+
 #include "jungle/meta.h"
 #include "jungle/test/test.h"
 #include "text.h"
@@ -487,7 +490,7 @@ JUNGLE_SYNC_TEST(text_source_round_trip_nested_objects) {
 
     JUNGLE_SYNC_ASSERT(
         re_serialized.view() == text.view(),
-        "serialize �?deserialize �?serialize should produce identical text");
+        "serialize 锟?deserialize 锟?serialize should produce identical text");
     JUNGLE_SYNC_SUCCESS();
 }
 

@@ -1,3 +1,6 @@
+# Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+# SPDX-License-Identifier: MIT
+
 cmake_minimum_required(VERSION 3.20)
 project(Jungle VERSION 0.1.0 LANGUAGES CXX)
 
