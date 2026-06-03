@@ -82,21 +82,22 @@ typename Target::target_type serialize(T &&value);
 #### 自由函数
 
 ```cpp
-// 直接操作 source，写入已有变量
-template<typename T, DeserializeSourceImpl Source>
-void deserialize(Source &source, T &value);
-
 // 从 payload 构造新值并返回（T 需 default_constructible）
+// 成功时返回包含值的 optional，失败时返回 nullopt
 template<typename T, DeserializeSourceImpl Source>
   requires std::is_default_constructible_v<T>
-T deserialize(const typename Source::source_type &source_payload);
+std::optional<T> deserialize(const typename Source::source_type &source_payload);
 
-// 从 payload 写入已有变量
+// 从 payload 写入已有变量，返回是否成功
 template<typename T, DeserializeSourceImpl Source>
-void deserialize(const typename Source::source_type &source_payload, T &value);
+[[nodiscard]] bool deserialize(const typename Source::source_type &source_payload, T &value);
+
+// 直接操作 source，写入已有变量，返回是否成功
+template<typename T, DeserializeSourceImpl Source>
+[[nodiscard]] bool deserialize(Source &source, T &value);
 ```
 
-第一个重载是最通用的形式：`T` 的构造由调用方负责，source 只负责填充。后两个是便捷重载。
+所有反序列化操作都通过 `bool` 返回值或 `std::optional` 表示成功/失败。调用方负责检查返回值。
 
 #### DeserializeSource 基类
 
@@ -105,38 +106,38 @@ void deserialize(const typename Source::source_type &source_payload, T &value);
 - 定义 `source_type`（原始输入类型）
 - 实现 `provide_source(const source_type &) -> void`
 - 实现 `spawn_subsource() -> Source`
-- 实现各类型的 `deserialize_*` 方法
+- 实现各类型的 `deserialize_*` 方法，所有方法返回 `bool`
 
 基类 `DeserializeSource` 提供的模板方法及其 requires 约束：
 
-| 基类方法                            | 调用的派生类方法                                                                                                                                                   |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `deserialize_bool(bool &)`          | `deserialize_bool(bool &) -> void`                                                                                                                                 |
-| `deserialize_integral(I &)`         | `deserialize_integral(I &) -> void`                                                                                                                                |
-| `deserialize_floating_point(F &)`   | `deserialize_floating_point(F &) -> void`                                                                                                                          |
-| `deserialize_enum(T &)`             | `deserialize_enum(T &) -> void`                                                                                                                                    |
-| `deserialize_optional(OptionalT &)` | `deserialize_optional_nonnull() -> bool`                                                                                                                           |
-| `deserialize_range(R &)`            | `deserialize_range_head() -> void`、`deserialize_range_has_element() -> bool`、`deserialize_range_element_end() -> void`、`deserialize_range_tail() -> void`       |
-| `deserialize_class_object(T &)`     | `deserialize_class_head() -> string_view`、`deserialize_class_field() -> string_view`、`deserialize_class_field_end() -> void`、`deserialize_class_tail() -> void` |
+| 基类方法                                    | 调用的派生类方法                                                                                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `deserialize_bool(bool &) -> bool`          | `deserialize_bool(bool &) -> bool`                                                                                                                           |
+| `deserialize_integral(I &) -> bool`         | `deserialize_integral(I &) -> bool`                                                                                                                          |
+| `deserialize_floating_point(F &) -> bool`   | `deserialize_floating_point(F &) -> bool`                                                                                                                    |
+| `deserialize_enum(T &) -> bool`             | `deserialize_enum(T &) -> bool`                                                                                                                              |
+| `deserialize_optional(OptionalT &) -> bool` | `deserialize_optional_nonnull() -> bool`、`deserialize_optional_nullopt() -> bool`                                                                           |
+| `deserialize_range(R &) -> bool`            | `deserialize_range_head() -> bool`、`deserialize_range_has_element() -> bool`、`deserialize_range_element_end() -> bool`、`deserialize_range_tail() -> bool` |
+| `deserialize_class_object(T &) -> bool`     | `deserialize_class_head() -> bool`、`deserialize_class_field() -> bool`、`deserialize_class_field_end() -> bool`、`deserialize_class_tail() -> bool`         |
 
-> **注意**：`deserialize` 自由函数要求 `T` 在调用前已被构造。Source 的方法只负责写入，不负责构造。对于 `std::optional<T>`，内部值类型 `T` 还需满足 `default_constructible` 和 `move_constructible`。
+> 与序列化不同，反序列化的结构方法（`head`、`field`、`element_end` 等）全部返回 `bool` 而非 `void`。当解析到非法格式时可返回 `false` 使上层回退或报错，而不是通过 panic 终止进程。
 
 #### range 的反序列化流程
 
 ```
-deserialize_range_head()         → 消费起始标记（如 "["）
+if (!deserialize_range_head()) return false;         → 失败则终止
 while deserialize_range_has_element():
-    spawn_subsource()            → 创建子 source
-    deserialize(subsource, elem) → 递归反序列化元素
-    deserialize_range_element_end() → 消费分隔符（如 ","）
-deserialize_range_tail()         → 消费结束标记（如 "]"）
+    spawn_subsource() → 创建子 source
+    deserialize(subsource, elem) → 递归反序列化元素（忽略返回值，由上层 source 的结构方法保证正确性）
+    if (!deserialize_range_element_end()) return false;
+if (!deserialize_range_tail()) return false;
 ```
 
 #### class 的反序列化流程
 
-与序列化对称：`deserialize_class_head()` 读取类型名，反射遍历成员，`deserialize_class_field()` 读取字段名，通过子 source 递归反序列化字段值，`deserialize_class_field_end()` 消费分隔符，`deserialize_class_tail()` 消费结束标记。
+与序列化对称，但 `deserialize_class_head()` 和 `deserialize_class_field()` 仅返回 `bool`（成功与否），不返回解析到的类型名/字段名——这些字符串在反序列化中仅作验证用途，由基类的控制流统一处理失败返回。
 
-定制器在反序列化时的调用：
+定制器调用：
 
 ```cpp
 value.[:m:] = customizer_instance.deserialize(value.[:m:], subsource);
@@ -265,23 +266,24 @@ public:
     }
     TextSource spawn_subsource() { return TextSource{m_source, m_cursor}; }
 
-    void deserialize_bool(bool &value) { /* 解析 "true" / "false" */ }
+    bool deserialize_bool(bool &value) { /* 解析 "true"/"false"，写入 value，返回成功 */ }
     template<std::integral I>
-    void deserialize_integral(I &value) { /* from_chars 解析整数 */ }
+    bool deserialize_integral(I &value) { /* from_chars 解析，返回成功 */ }
     template<std::floating_point F>
-    void deserialize_floating_point(F &value) { /* from_chars 解析浮点 */ }
+    bool deserialize_floating_point(F &value) { /* from_chars 解析，返回成功 */ }
     template<concepts::is_enum E>
-    void deserialize_enum(E &value) { /* 按名字匹配枚举项 */ }
+    bool deserialize_enum(E &value) { /* 按名字匹配枚举项，返回成功 */ }
 
-    bool deserialize_optional_nonnull() { /* 检查 "optional##" 后是否跟 "nullopt" */ }
-    void deserialize_range_head()        { /* 消费 "[" */ }
+    bool deserialize_optional_nonnull() { /* 消费 "optional##"，若非 "nullopt" 返回 true */ }
+    bool deserialize_optional_nullopt() { /* 消费 "nullopt"，返回成功 */ }
+    bool deserialize_range_head()        { /* 消费 "[" */ }
     bool deserialize_range_has_element() { /* 检查下个字符是否为 "]" */ }
-    void deserialize_range_element_end() { /* 消费 "," */ }
-    void deserialize_range_tail()        { /* 消费 "]" */ }
-    std::string_view deserialize_class_head()  { /* 消费 "TypeName{" */ }
-    std::string_view deserialize_class_field() { /* 消费 "fieldName:" */ }
-    void deserialize_class_field_end()   { /* 消费 "," */ }
-    void deserialize_class_tail()        { /* 消费 "}" */ }
+    bool deserialize_range_element_end() { /* 消费 "," */ }
+    bool deserialize_range_tail()        { /* 消费 "]" */ }
+    bool deserialize_class_head()        { /* 消费 "TypeName{" */ }
+    bool deserialize_class_field()       { /* 消费 "fieldName:" */ }
+    bool deserialize_class_field_end()   { /* 消费 "," */ }
+    bool deserialize_class_tail()        { /* 消费 "}" */ }
 
 private:
     TextSource(std::string_view source, usize *cursor)
@@ -289,16 +291,16 @@ private:
     std::string_view m_source;
     usize m_owned_cursor{0};
     usize *m_cursor{&m_owned_cursor};
-    // 游标推进、前缀匹配等辅助方法省略
 };
 
 static_assert(DeserializeSourceImpl<TextSource>);
 ```
 
 关键设计点：
+- 所有方法返回 `bool`：解析成功返回 `true`，格式不匹配返回 `false`（不 panic）
 - `spawn_subsource()` 通过共享游标实现：子 source 读取时自动推进父 source 的位置
-- 结构方法（`head`、`has_element`、`element_end`、`tail`）负责消费格式标记
-- 值方法（`deserialize_bool` 等）只负责解析值本身，不处理外围标记
+- `deserialize_optional_nonnull()` 消费 `"optional##"` 前缀后仅 peek（不消费）`"nullopt"`；若确实为 nullopt 则返回 `false`，由 `deserialize_optional_nullopt()` 消费
+- `deserialize_class_head()` 和 `deserialize_class_field()` 只返回 `bool`，不返回解析到的类型名/字段名——这些值在反序列化路径中未被使用
 
 ### 实现 Customizer
 
@@ -340,15 +342,18 @@ struct S {
 // 序列化
 ustr text = serialize<TextTarget>(my_object);
 
-// 反序列化（构造新值）
-auto obj = deserialize<MyStruct, TextSource>(text);
+// 反序列化（构造新值，返回 optional）
+auto result = deserialize<MyStruct, TextSource>(text);
+if (result.has_value()) {
+    // 使用 *result
+}
 
-// 反序列化（写入已有变量）
+// 反序列化（写入已有变量，返回 bool）
 MyStruct obj;
-deserialize<MyStruct, TextSource>(text, obj);
+bool ok = deserialize<MyStruct, TextSource>(text, obj);
 
 // 反序列化（直接操作 source）
 TextSource src;
 src.provide_source(text);
-deserialize(src, obj);
+bool ok = deserialize(src, obj);
 ```

@@ -14,15 +14,15 @@ public:
     bool deliver_result() { return false; }
 
     template<std::integral I>
-    void serialize_integral(I) {}
+    void serialize_integral(const I &) {}
 
     template<std::floating_point F>
-    void serialize_floating_point(F) {}
+    void serialize_floating_point(const F &) {}
 
-    void serialize_bool(bool) {}
+    void serialize_bool(const bool &) {}
 
     template<concepts::is_enum E>
-    void serialize_enum(E) {}
+    void serialize_enum(const E &) {}
 
     void serialize_optional_nonnull() {}
     void serialize_optional_nullopt() {}
@@ -36,28 +36,29 @@ public:
     void serialize_class_field_end() {}
     void serialize_class_tail(std::string_view) {}
 
-    void deserialize_bool(bool &) {}
+    bool deserialize_bool(bool &) { return {}; }
 
     template<std::integral I>
-    void deserialize_integral(I &) {}
+    bool deserialize_integral(I &) { return {}; }
 
     template<std::floating_point F>
-    void deserialize_floating_point(F &) {}
+    bool deserialize_floating_point(F &) { return {}; }
 
     template<concepts::is_enum E>
-    void deserialize_enum(E &) {}
+    bool deserialize_enum(E &) { return {}; }
 
     bool deserialize_optional_nonnull() { return {}; }
+    bool deserialize_optional_nullopt() { return {}; }
 
-    void deserialize_range_head() {}
+    bool deserialize_range_head() { return {}; }
     bool deserialize_range_has_element() { return {}; }
-    void deserialize_range_element_end() {}
-    void deserialize_range_tail() {}
+    bool deserialize_range_element_end() { return {}; }
+    bool deserialize_range_tail() { return {}; }
 
-    std::string_view deserialize_class_head() { return {}; }
-    std::string_view deserialize_class_field() { return {}; }
-    void deserialize_class_field_end() {}
-    void deserialize_class_tail() {}
+    bool deserialize_class_head() { return {}; }
+    bool deserialize_class_field() { return {}; }
+    bool deserialize_class_field_end() { return {}; }
+    bool deserialize_class_tail() { return {}; }
 };
 
 };  // namespace detail

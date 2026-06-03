@@ -9,23 +9,26 @@
 namespace jungle::serde {
 
 template<typename T, DeserializeSourceImpl Source>
-inline void deserialize(Source &source, T &value);
+[[nodiscard]] inline bool deserialize(Source &source, T &value);
 
 template<typename T, DeserializeSourceImpl Source>
     requires std::is_default_constructible_v<T>
-inline T deserialize(const typename Source::source_type &source_payload) {
+inline std::optional<T> deserialize(const typename Source::source_type &source_payload) {
     Source source{};
     source.provide_source(source_payload);
     T value{};
-    deserialize(source, value);
-    return value;
+    if (deserialize(source, value)) {
+        return value;
+    } else {
+        return std::nullopt;
+    }
 }
 
 template<typename T, DeserializeSourceImpl Source>
-inline void deserialize(const typename Source::source_type &source_payload, T &value) {
+[[nodiscard]] inline bool deserialize(const typename Source::source_type &source_payload, T &value) {
     Source source{};
     source.provide_source(source_payload);
-    deserialize(source, value);
+    return deserialize(source, value);
 }
 
 template<typename Source>
@@ -46,80 +49,104 @@ public:
         return self().spawn_subsource();
     }
 
-    void deserialize_bool(bool &value)
-        requires std::same_as<decltype(self().deserialize_bool(std::declval<bool &>())), void>
+    bool deserialize_bool(bool &value)
+        requires requires {
+            { self().deserialize_bool(value) } -> std::same_as<bool>;
+        }
     {
-        self().deserialize_bool(value);
+        return self().deserialize_bool(value);
     }
 
     template<std::integral I>
-    void deserialize_integral(I &value)
-        requires std::same_as<decltype(self().template deserialize_integral<I>(std::declval<I &>())), void>
+    bool deserialize_integral(I &value)
+        requires requires {
+            { self().template deserialize_integral<I>(value) } -> std::same_as<bool>;
+        }
     {
-        self().template deserialize_integral<I>(value);
+        return self().template deserialize_integral<I>(value);
     }
 
     template<std::floating_point F>
-    void deserialize_floating_point(F &value)
-        requires std::same_as<
-            decltype(self().template deserialize_floating_point<F>(std::declval<F &>())), void>
+    bool deserialize_floating_point(F &value)
+        requires requires {
+            { self().template deserialize_floating_point<F>(value) } -> std::same_as<bool>;
+        }
     {
-        self().template deserialize_floating_point<F>(value);
+        return self().template deserialize_floating_point<F>(value);
     }
 
     template<concepts::is_enum T>
-    void deserialize_enum(T &value)
-        requires std::same_as<decltype(self().template deserialize_enum<T>(std::declval<T &>())), void>
+    bool deserialize_enum(T &value)
+        requires requires {
+            { self().template deserialize_enum<T>(value) } -> std::same_as<bool>;
+        }
     {
-        self().template deserialize_enum<T>(value);
+        return self().template deserialize_enum<T>(value);
     }
 
     template<typename OptionalT>
-    void deserialize_optional(OptionalT &value)
-        requires(std::same_as<decltype(self().deserialize_optional_nonnull()), bool>)
+    bool deserialize_optional(OptionalT &value)
+        requires requires {
+            { self().deserialize_optional_nonnull() } -> std::same_as<bool>;
+            { self().deserialize_optional_nullopt() } -> std::same_as<bool>;
+        }
     {
         if (self().deserialize_optional_nonnull()) {
             auto subsource = spawn_subsource();
             typename OptionalT::value_type inner_value{};
             deserialize(subsource, inner_value);
             value = std::move(inner_value);
-        } else {
+        } else if (self().deserialize_optional_nullopt()) {
             value = std::nullopt;
+        } else {
+            return false;
         }
+        return true;
     }
 
     template<std::ranges::range R>
-    void deserialize_range(R &value)
-        requires(
-            std::same_as<decltype(self().deserialize_range_head()), void>
-            && std::same_as<decltype(self().deserialize_range_has_element()), bool>
-            && std::same_as<decltype(self().deserialize_range_element_end()), void>
-            && std::same_as<decltype(self().deserialize_range_tail()), void>)
+    bool deserialize_range(R &value)
+        requires requires {
+            { self().deserialize_range_head() } -> std::same_as<bool>;
+            { self().deserialize_range_has_element() } -> std::same_as<bool>;
+            { self().deserialize_range_element_end() } -> std::same_as<bool>;
+            { self().deserialize_range_tail() } -> std::same_as<bool>;
+        }
     {
         using value_type = std::ranges::range_value_t<R>;
 
-        self().deserialize_range_head();
+        if (!self().deserialize_range_head()) {
+            return false;
+        }
 
         while (self().deserialize_range_has_element()) {
             auto subsource = spawn_subsource();
             value_type elem{};
             deserialize(subsource, elem);
             value.insert(value.end(), std::move(elem));
-            self().deserialize_range_element_end();
+            if (!self().deserialize_range_element_end()) {
+                return false;
+            }
         }
 
-        self().deserialize_range_tail();
+        if (!self().deserialize_range_tail()) {
+            return false;
+        }
+        return true;
     }
 
     template<class T>
-    void deserialize_class_object(T &value)
-        requires(
-            std::same_as<decltype(self().deserialize_class_head()), std::string_view>
-            && std::same_as<decltype(self().deserialize_class_field()), std::string_view>
-            && std::same_as<decltype(self().deserialize_class_field_end()), void>
-            && std::same_as<decltype(self().deserialize_class_tail()), void>)
+    bool deserialize_class_object(T &value)
+        requires requires {
+            { self().deserialize_class_head() } -> std::same_as<bool>;
+            { self().deserialize_class_field() } -> std::same_as<bool>;
+            { self().deserialize_class_field_end() } -> std::same_as<bool>;
+            { self().deserialize_class_tail() } -> std::same_as<bool>;
+        }
     {
-        std::string_view type_identifier = self().deserialize_class_head();
+        if (!self().deserialize_class_head()) {
+            return false;
+        }
 
         constexpr bool customized_class = meta::has_annotation(^^T, customized);
 
@@ -129,7 +156,9 @@ public:
             constexpr bool customized_field = meta::has_template_annotation<m, ^^customize>();
             if constexpr (std::meta::is_nonstatic_data_member(m)) {
                 if constexpr ((customized_class && marked_as_field) || !customized_class) {
-                    std::string_view field_name = self().deserialize_class_field();
+                    if (!self().deserialize_class_field()) {
+                        return false;
+                    }
                     auto subsource = spawn_subsource();
                     if constexpr (customized_field) {
                         constexpr auto customizer =
@@ -141,12 +170,17 @@ public:
                     } else {
                         deserialize(subsource, value.[:m:]);
                     }
-                    self().deserialize_class_field_end();
+                    if (!self().deserialize_class_field_end()) {
+                        return false;
+                    }
                 }
             }
         }
 
-        self().deserialize_class_tail();
+        if (!self().deserialize_class_tail()) {
+            return false;
+        }
+        return true;
     }
 
 protected:
@@ -154,25 +188,25 @@ protected:
 };
 
 template<typename T, DeserializeSourceImpl Source>
-inline void deserialize(Source &source, T &value) {
+[[nodiscard]] inline bool deserialize(Source &source, T &value) {
     if constexpr (std::same_as<T, bool>) {
-        source.deserialize_bool(value);
+        return source.deserialize_bool(value);
     } else if constexpr (std::integral<T>) {
-        source.template deserialize_integral<T>(value);
+        return source.template deserialize_integral<T>(value);
     } else if constexpr (std::floating_point<T>) {
-        source.template deserialize_floating_point<T>(value);
+        return source.template deserialize_floating_point<T>(value);
     } else if constexpr (std::is_enum_v<T>) {
-        source.template deserialize_enum<T>(value);
+        return source.template deserialize_enum<T>(value);
     } else if constexpr (meta::is_specialization_of_template<^^T, ^^std::optional>()) {
         static_assert(
             std::is_default_constructible_v<typename T::value_type>
                 && std::is_move_constructible_v<typename T::value_type>,
             "Optional value type must be default constructible and move constructible");
-        source.template deserialize_optional<T>(value);
+        return source.template deserialize_optional<T>(value);
     } else if constexpr (std::ranges::range<T>) {
-        source.template deserialize_range<T>(value);
+        return source.template deserialize_range<T>(value);
     } else if constexpr (std::is_class_v<T>) {
-        source.template deserialize_class_object<T>(value);
+        return source.template deserialize_class_object<T>(value);
     } else {
         static_assert(false, "Type is not deserializable");
     }

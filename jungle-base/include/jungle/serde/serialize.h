@@ -31,43 +31,54 @@ public:
     constexpr SerializeTarget &operator=(SerializeTarget &&) = default;
 
     Target spawn_subtarget()
-        requires std::same_as<decltype(self().spawn_subtarget()), Target>
+        requires requires {
+            { self().spawn_subtarget() } -> std::same_as<Target>;
+        }
     {
         return self().spawn_subtarget();
     }
 
     void serialize_bool(const bool &value)
-        requires std::same_as<decltype(self().serialize_bool(std::declval<const bool &>())), void>
+        requires requires {
+            { self().serialize_bool(value) } -> std::same_as<void>;
+        }
     {
         self().serialize_bool(value);
     }
 
     template<std::integral I>
     void serialize_integral(const I &value)
-        requires std::same_as<decltype(self().serialize_integral(std::declval<const I &>())), void>
+        requires requires {
+            { self().template serialize_integral<I>(value) } -> std::same_as<void>;
+        }
     {
         self().serialize_integral(value);
     }
 
     template<std::floating_point F>
     void serialize_floating_point(const F &value)
-        requires std::same_as<decltype(self().serialize_floating_point(std::declval<const F &>())), void>
+        requires requires {
+            { self().template serialize_floating_point<F>(value) } -> std::same_as<void>;
+        }
     {
         self().serialize_floating_point(value);
     }
 
     template<concepts::is_enum T>
     void serialize_enum(const T &value)
-        requires std::same_as<decltype(self().serialize_enum(std::declval<const T &>())), void>
+        requires requires {
+            { self().template serialize_enum<T>(value) } -> std::same_as<void>;
+        }
     {
         self().serialize_enum(value);
     }
 
     template<typename T>
     void serialize_optional(const std::optional<T> &value)
-        requires(
-            std::same_as<decltype(self().serialize_optional_nonnull()), void>
-            && std::same_as<decltype(self().serialize_optional_nullopt()), void>)
+        requires requires {
+            { self().serialize_optional_nonnull() } -> std::same_as<void>;
+            { self().serialize_optional_nullopt() } -> std::same_as<void>;
+        }
     {
         if (value) {
             self().serialize_optional_nonnull();
@@ -80,10 +91,11 @@ public:
 
     template<std::ranges::range R>
     void serialize_range(const R &range)
-        requires(
-            std::same_as<decltype(self().serialize_range_head()), void>
-            && std::same_as<decltype(self().serialize_range_element_end()), void>
-            && std::same_as<decltype(self().serialize_range_tail(std::declval<usize>())), void>)
+        requires requires {
+            { self().serialize_range_head() } -> std::same_as<void>;
+            { self().serialize_range_element_end() } -> std::same_as<void>;
+            { self().serialize_range_tail(std::declval<usize>()) } -> std::same_as<void>;
+        }
     {
         self().serialize_range_head();
 
@@ -100,11 +112,12 @@ public:
 
     template<class T>
     void serialize_class_object(const T &obj)
-        requires(
-            std::same_as<decltype(self().serialize_class_head(std::declval<std::string_view>())), void>
-            && std::same_as<decltype(self().serialize_class_field(std::declval<std::string_view>())), void>
-            && std::same_as<decltype(self().serialize_class_field_end()), void>
-            && std::same_as<decltype(self().serialize_class_tail(std::declval<std::string_view>())), void>)
+        requires requires {
+            { self().serialize_class_head(std::declval<std::string_view>()) } -> std::same_as<void>;
+            { self().serialize_class_field(std::declval<std::string_view>()) } -> std::same_as<void>;
+            { self().serialize_class_field_end() } -> std::same_as<void>;
+            { self().serialize_class_tail(std::declval<std::string_view>()) } -> std::same_as<void>;
+        }
     {
         std::string_view type_identifier;
         if constexpr (std::meta::has_identifier(^^T)) {
