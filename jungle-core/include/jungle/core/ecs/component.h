@@ -9,6 +9,7 @@
 #include "jungle/core/ecs/entity.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
+#include "jungle/util/type_mutate.h"
 
 namespace jungle::core::ecs {
 
@@ -53,8 +54,11 @@ concept ComponentImpl = requires {
 };
 
 template<>
-class Component<> {
+class Component<> : public util::type_mutate<Component<>> {
 public:
+    template<typename C>
+    static constexpr bool static_mutatable = ComponentImpl<C>;
+
     Component() = delete;
     Component(const Component &) = delete;
     Component &operator=(const Component &) = delete;
@@ -62,50 +66,22 @@ public:
 
     Component(Component &&) = default;
 
-    template<ComponentImpl C>
-    constexpr bool is() const {
-        return m_type == type_id::of<C>();
-    }
-
-    constexpr bool is(type_id type) const { return m_type == type; }
-
-    template<ComponentImpl C>
-    constexpr C &as() pre(is<C>()) {
-        return static_cast<C &>(*this);
-    }
-
-    template<ComponentImpl C>
-    constexpr const C &as() const pre(is<C>()) {
-        return static_cast<const C &>(*this);
-    }
-
-    template<ComponentImpl C>
-    constexpr C *try_as() {
-        return is<C>() ? &static_cast<C &>(*this) : nullptr;
-    }
-
-    template<ComponentImpl C>
-    constexpr const C *try_as() const {
-        return is<C>() ? &static_cast<const C &>(*this) : nullptr;
-    }
-
-    constexpr type_id type() const { return m_type; }
+    constexpr ComponentID id() const { return m_id; }
 
     constexpr Entity owner_entity() const { return m_entity; }
 
 protected:
     constexpr Component(type_id type, Entity entity, ComponentID id)
-            : m_type{type}
+            : util::type_mutate<Component<>>{type}
             , m_id{id}
             , m_entity{entity} {}
 
 private:
-    const type_id m_type;
     const ComponentID m_id;
     const Entity m_entity;
 };
 
-template<ComponentImpl C>
+template<concepts::non_void C>
 class Component<C> : public Component<> {
 public:
     Component(const Component &) = delete;
@@ -117,8 +93,6 @@ public:
 protected:
     constexpr Component(Entity entity, ComponentID id)
             : Component<>{type_id::of<C>(), entity, id} {}
-
-private:
 };
 
 };  // namespace jungle::core::ecs

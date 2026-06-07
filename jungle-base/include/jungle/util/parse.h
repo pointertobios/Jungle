@@ -12,10 +12,6 @@
 
 namespace jungle::util {
 
-/**
- * @brief 灏忕搴?Base64 缂栫爜鎯版€ц鍥?
- * @details 浜х敓涓€涓?uchar 搴忓垪
- */
 struct base64_encoder_view : public std::ranges::view_interface<base64_encoder_view> {
     struct iterator {
         using iterator_concept = std::forward_iterator_tag;

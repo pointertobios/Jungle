@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <print>
+#include <source_location>
 #include <string>
 #include <vector>
 
@@ -39,7 +40,7 @@ int main() {
     for (const auto &[area, name, func] : jungle::test::sync_test_cases()) {
         auto result = func();
         if (!result) {
-            std::println("[FAILED] {}::{} - {}", area, name, result.error());
+            std::println("[FAILED] {}::{}\n{}", area, name, result.error());
         } else {
             std::println("[PASSED] {}::{}", area, name);
         }

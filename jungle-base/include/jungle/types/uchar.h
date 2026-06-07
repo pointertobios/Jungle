@@ -54,27 +54,10 @@ struct uchar {
         return m_value != INVALID && other.m_value != INVALID && m_value == other.m_value;
     }
 
-    /**
-     * @brief 璁＄畻 UTF-8 搴忓垪涓涓€涓瓧绗︾殑闀垮害
-     *
-     * @param utf8 鑷冲皯鍖呭惈涓€涓畬鏁?UTF-8 瀛楃鐨勫瓧鑺傚簭鍒?
-     * @return usize UTF-8 瀛楃鐨勫瓧鑺傞暱搴︼紝鎴?濡傛灉杈撳叆鏃犳晥
-     */
     static constexpr usize utf8_length(std::span<const i8> utf8);
 
-    /**
-     * @brief 浠?UTF-8 搴忓垪涓В鏋愬嚭涓€涓瓧绗?
-     *
-     * @param utf8 鑷冲皯鍖呭惈涓€涓畬鏁?UTF-8 瀛楃鐨勫瓧鑺傚簭鍒?
-     * @return uchar 瑙ｆ瀽鍑虹殑瀛楃锛屽鏋滆緭鍏ユ棤鏁堝垯杩斿洖 {uchar::INVALID}
-     */
     static constexpr uchar from_utf8(std::span<const i8> utf8);
 
-    /**
-     * @brief 灏嗗瓧绗︾紪鐮佷负 UTF-8 搴忓垪
-     *
-     * @return std::array<i8, 4> UTF-8 缂栫爜鐨勫瓧鑺傛暟缁勶紝UTF-8 缂栫爜闀垮害涓嶈冻 4 瀛楄妭鏃跺熬閮ㄥ～鍏?0
-     */
     constexpr std::array<i8, 4> to_utf8() const;
 
 private:
@@ -102,6 +85,8 @@ public:
         }
     }
 
+    constexpr bool is_empty() const { return m_storage.empty(); }
+
     std::string_view view() const { return m_storage; }
 
     std::vector<uchar> to_uchars() const;
@@ -123,14 +108,6 @@ public:
         }
     }
 
-    /**
-     * @brief 鏍煎紡鍖栧瓧绗︿覆
-     *
-     * @tparam Args
-     * @param fmt
-     * @param args 瀵逛簬瀹炵幇浜?Debug concept 鐨勭被鍨嬶紝浼樺厛璋冪敤 debug() 浜х敓鐨勫瓧绗︿覆杩涜鏍煎紡鍖?
-     * @return constexpr ustr
-     */
     template<typename... Args>
     static ustr format(std::format_string<fmt::format_arg_t<Args>...> fmt, Args &&...args) {
         return ustr{std::vformat(fmt.get(), std::make_format_args(fmt::normalize_format_arg(args)...))};

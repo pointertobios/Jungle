@@ -22,3 +22,14 @@ target_link_libraries(jungle-core jungle::base)
 target_include_directories(jungle-core PUBLIC include)
 target_precompile_headers(jungle-core PUBLIC ${JUNGLE_HEADERS})
 add_library(jungle::core ALIAS jungle-core)
+
+# Unit Tests
+
+set(JUNGLE_UNIT_TEST_SOURCES
+    unit_tests/component.cpp
+    unit_tests/manager.cpp
+)
+
+add_executable(jungle-core-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})
+target_link_libraries(jungle-core-unit-tests PUBLIC jungle::test jungle::core)
+add_test(NAME jungle-core-unit-tests COMMAND jungle-core-unit-tests)

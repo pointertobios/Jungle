@@ -23,8 +23,7 @@ namespace jungle {
 template<typename K>
 concept hash_key =
     std::is_default_constructible_v<K> && std::is_copy_assignable_v<K> && std::is_copy_constructible_v<K>
-    && std::is_destructible_v<K> && std::equality_comparable<K> && std::copyable<K>
-    && std::is_destructible_v<K> && requires(K k) {
+    && std::is_destructible_v<K> && std::equality_comparable<K> && std::copyable<K> && requires(K k) {
            { std::hash<K>{}(k) } -> std::convertible_to<usize>;
        };
 
@@ -88,12 +87,26 @@ get(const jungle::detail::pair_ref_const<K, V> &p) {
 
 };  // namespace detail
 
-/**
- * @brief 寮€鏀惧畾鍧€鍝堝笇琛?
- *
- * @tparam K
- * @tparam V
- */
+};  // namespace jungle
+
+template<
+    jungle::hash_key K, jungle::concepts::non_void V, template<class...> typename TQual,
+    template<class...> typename UQual>
+struct std::basic_common_reference<
+    jungle::detail::pair_ref<K, V>, jungle::detail::pair_ref<K, V>, TQual, UQual> {
+    using type = const jungle::detail::pair_ref<K, V> &;
+};
+
+template<
+    jungle::hash_key K, jungle::concepts::non_void V, template<class...> typename TQual,
+    template<class...> typename UQual>
+struct std::basic_common_reference<
+    jungle::detail::pair_ref_const<K, V>, jungle::detail::pair_ref_const<K, V>, TQual, UQual> {
+    using type = const jungle::detail::pair_ref_const<K, V> &;
+};
+
+namespace jungle {
+
 template<hash_key K, typename V>
 class hash_map {
     struct slot {
@@ -121,29 +134,42 @@ public:
     class iterator {
         friend class hash_map;
 
+        using mut_value_type = fuck_void_or_else<V, detail::pair_ref<K, fuck_void<V>>, K>;
+        using const_value_type = fuck_void_or_else<V, detail::pair_ref_const<K, fuck_void<V>>, K>;
+
     public:
-        fuck_void_or_else<V, detail::pair_ref<K, fuck_void<V>>, K> operator*()
-            pre(validative_check() && end_check()) {
-            auto &sl = m_map.m_slots.at(*m_index);
-            if constexpr (std::is_void_v<V>) {
-                return sl.key;
-            } else {
-                return {sl.key, *sl.value.get()};
+        using difference_type = isize;
+        using value_type = mut_value_type;
+        using iterator_concept = std::forward_iterator_tag;
+        using iterator_category = std::forward_iterator_tag;
+
+        iterator() = default;
+
+        ~iterator() {
+            if (m_cache_valid) {
+                m_cache.destroy();
             }
         }
 
-        fuck_void_or_else<V, detail::pair_ref_const<K, fuck_void<V>>, K> operator*() const
-            pre(validative_check() && end_check()) {
-            auto &sl = m_map.m_slots.at(*m_index);
-            if constexpr (std::is_void_v<V>) {
-                return sl.key;
-            } else {
-                return {sl.key, *sl.value.get()};
+        value_type &operator*() const pre(validative_check() && end_check()) {
+            if (m_cache_valid) {
+                m_cache.destroy();
             }
+            auto &sl = m_map->m_slots.at(*m_index);
+            if constexpr (std::is_void_v<V>) {
+                m_cache.emplace(sl.key);
+            } else {
+                m_cache.emplace(sl.key, *sl.value.get());
+            }
+            m_cache_valid = true;
+            return *m_cache.get();
         }
 
         iterator &operator++() pre(validative_check() && end_check()) {
             *m_index += 1;
+            m_counter += 1;
+
+            m_cache_valid = false;
             next_filled();
             return *this;
         }
@@ -154,43 +180,107 @@ public:
             return res;
         }
 
+        iterator(const iterator &other)
+                : m_map{other.m_map}
+                , m_generation{other.m_generation}
+                , m_counter{other.m_counter}
+                , m_index{other.m_index} {}
+
+        iterator &operator=(const iterator &other) {
+            if (this == &other) {
+                return *this;
+            }
+            if (m_cache_valid) {
+                m_cache.destroy();
+            }
+            m_map = other.m_map;
+            m_generation = other.m_generation;
+            m_counter = other.m_counter;
+            m_index = other.m_index;
+            m_cache_valid = false;
+            return *this;
+        }
+
+        iterator(iterator &&other) noexcept
+                : m_map{other.m_map}
+                , m_generation{other.m_generation}
+                , m_counter{other.m_counter}
+                , m_index{other.m_index} {
+            other.m_index = std::nullopt;
+            other.m_counter = 0;
+            if (other.m_map) {
+                other.m_generation = other.m_map->m_generation + 1;
+                other.m_map = nullptr;
+            } else {
+                other.m_generation = other.m_generation + 1;
+            }
+        }
+
+        iterator &operator=(iterator &&other) noexcept {
+            if (this == &other) {
+                return *this;
+            }
+            if (m_cache_valid) {
+                m_cache.destroy();
+            }
+            m_map = other.m_map;
+            m_generation = other.m_generation;
+            m_counter = other.m_counter;
+            m_index = other.m_index;
+            m_cache_valid = false;
+            other.m_index = std::nullopt;
+            other.m_counter = 0;
+            if (other.m_map) {
+                other.m_generation = other.m_map->m_generation + 1;
+                other.m_map = nullptr;
+            } else {
+                other.m_generation = other.m_generation + 1;
+            }
+            return *this;
+        }
+
         bool operator==(const iterator &rhs) const
-            pre(validative_check() && rhs.validative_check() && &m_map == &rhs.m_map) {
+            pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
             return m_index == rhs.m_index;
+        }
+
+        friend difference_type operator-(const iterator &lhs, const iterator &rhs)
+            pre(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map) {
+            return static_cast<difference_type>(lhs.m_counter) - static_cast<difference_type>(rhs.m_counter);
         }
 
     private:
         iterator(hash_map &map, usize generation, bool end = false)
-                : m_map{map}
+                : m_map{&map}
                 , m_generation{generation}
+                , m_counter{end ? map.m_load : 0}
                 , m_index{end ? std::optional<usize>{} : std::optional<usize>{0}} {
             if (!end) {
                 next_filled();
             }
         }
 
-        iterator(const iterator &it)
-                : m_map{it.m_map}
-                , m_generation{it.m_generation}
-                , m_index{it.m_index} {}
-
         void next_filled() {
             if (!m_index) {
                 return;
             }
-            if (*m_index == m_map.m_slots.size()) {
+            if (*m_index == m_map->m_slots.size()) {
                 m_index = std::nullopt;
             }
-            while (*m_index < m_map.m_slots.size() && m_map.m_slots.at(*m_index).st != slot::state::filled) {
+            while (*m_index < m_map->m_slots.size()
+                   && m_map->m_slots.at(*m_index).st != slot::state::filled) {
                 *m_index += 1;
             }
-            if (*m_index == m_map.m_slots.size()) {
+            if (*m_index == m_map->m_slots.size()) {
                 m_index = std::nullopt;
             }
         }
 
         bool validative_check() const {
-            if (m_map.m_generation != m_generation) [[unlikely]] {
+            if (!m_map) {
+                return false;
+            }
+            if (m_map->m_generation != m_generation) [[unlikely]] {
                 return false;
             }
             return true;
@@ -198,27 +288,52 @@ public:
 
         bool end_check() const { return m_index.has_value(); }
 
-        hash_map &m_map;
-        const usize m_generation;
+        hash_map *m_map;
+        usize m_generation;
+        usize m_counter{0};
         std::optional<usize> m_index;
+
+        [[no_unique_address]] mutable raw_storage<mut_value_type> m_cache;
+        mutable bool m_cache_valid{false};
     };
 
     class iterator_const {
         friend class hash_map;
 
+        using stored_value_type = fuck_void_or_else<V, detail::pair_ref_const<K, fuck_void<V>>, K>;
+
     public:
-        fuck_void_or_else<V, detail::pair_ref_const<K, V>, K> operator*() const
-            pre(validative_check() && end_check()) {
-            auto &sl = m_map.m_slots.at(*m_index);
-            if constexpr (std::is_void_v<V>) {
-                return sl.key;
-            } else {
-                return {sl.key, *sl.value.get()};
+        using difference_type = isize;
+        using value_type = stored_value_type;
+        using iterator_concept = std::forward_iterator_tag;
+        using iterator_category = std::forward_iterator_tag;
+
+        iterator_const() = default;
+
+        ~iterator_const() {
+            if (m_cache_valid) {
+                m_cache.destroy();
             }
+        }
+
+        const value_type &operator*() const pre(validative_check() && end_check()) {
+            if (m_cache_valid) {
+                m_cache.destroy();
+            }
+            auto &sl = m_map->m_slots.at(*m_index);
+            if constexpr (std::is_void_v<V>) {
+                m_cache.emplace(sl.key);
+            } else {
+                m_cache.emplace(sl.key, *sl.value.get());
+            }
+            m_cache_valid = true;
+            return *m_cache.get();
         }
 
         iterator_const &operator++() pre(validative_check() && end_check()) {
             *m_index += 1;
+            m_counter += 1;
+            m_cache_valid = false;
             next_filled();
             return *this;
         }
@@ -229,43 +344,107 @@ public:
             return res;
         }
 
+        iterator_const(const iterator_const &other)
+                : m_map{other.m_map}
+                , m_generation{other.m_generation}
+                , m_counter{other.m_counter}
+                , m_index{other.m_index} {}
+
+        iterator_const &operator=(const iterator_const &other) {
+            if (this == &other) {
+                return *this;
+            }
+            if (m_cache_valid) {
+                m_cache.destroy();
+            }
+            m_map = other.m_map;
+            m_generation = other.m_generation;
+            m_counter = other.m_counter;
+            m_index = other.m_index;
+            m_cache_valid = false;
+            return *this;
+        }
+
+        iterator_const(iterator_const &&other) noexcept
+                : m_map{other.m_map}
+                , m_generation{other.m_generation}
+                , m_counter{other.m_counter}
+                , m_index{other.m_index} {
+            other.m_index = std::nullopt;
+            other.m_counter = 0;
+            if (other.m_map) {
+                other.m_generation = other.m_map->m_generation + 1;
+                other.m_map = nullptr;
+            } else {
+                other.m_generation = other.m_generation + 1;
+            }
+        }
+
+        iterator_const &operator=(iterator_const &&other) noexcept {
+            if (this == &other) {
+                return *this;
+            }
+            if (m_cache_valid) {
+                m_cache.destroy();
+            }
+            m_map = other.m_map;
+            m_generation = other.m_generation;
+            m_counter = other.m_counter;
+            m_index = other.m_index;
+            m_cache_valid = false;
+            other.m_index = std::nullopt;
+            other.m_counter = 0;
+            if (other.m_map) {
+                other.m_generation = other.m_map->m_generation + 1;
+                other.m_map = nullptr;
+            } else {
+                other.m_generation = other.m_generation + 1;
+            }
+            return *this;
+        }
+
         bool operator==(const iterator_const &rhs) const
-            pre(validative_check() && rhs.validative_check() && &m_map == &rhs.m_map) {
+            pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
             return m_index == rhs.m_index;
+        }
+
+        friend difference_type operator-(const iterator_const &lhs, const iterator_const &rhs)
+            pre(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map) {
+            return static_cast<difference_type>(lhs.m_counter) - static_cast<difference_type>(rhs.m_counter);
         }
 
     private:
         iterator_const(const hash_map &map, usize generation, bool end = false)
-                : m_map{map}
+                : m_map{&map}
                 , m_generation{generation}
+                , m_counter{end ? map.m_load : 0}
                 , m_index{end ? std::optional<usize>{} : std::optional<usize>{0}} {
             if (!end) {
                 next_filled();
             }
         }
 
-        iterator_const(const iterator_const &it)
-                : m_map{it.m_map}
-                , m_generation{it.m_generation}
-                , m_index{it.m_index} {}
-
         void next_filled() {
             if (!m_index) {
                 return;
             }
-            if (*m_index == m_map.m_slots.size()) {
+            if (*m_index == m_map->m_slots.size()) {
                 m_index = std::nullopt;
             }
-            while (*m_index < m_map.m_slots.size() && m_map.m_slots.at(*m_index).st != slot::state::filled) {
+            while (*m_index < m_map->m_slots.size()
+                   && m_map->m_slots.at(*m_index).st != slot::state::filled) {
                 *m_index += 1;
             }
-            if (*m_index == m_map.m_slots.size()) {
+            if (*m_index == m_map->m_slots.size()) {
                 m_index = std::nullopt;
             }
         }
 
         bool validative_check() const {
-            if (m_map.m_generation != m_generation) [[unlikely]] {
+            if (!m_map) {
+                return false;
+            }
+            if (m_map->m_generation != m_generation) [[unlikely]] {
                 return false;
             }
             return true;
@@ -273,9 +452,13 @@ public:
 
         bool end_check() const { return m_index.has_value(); }
 
-        const hash_map &m_map;
-        const usize m_generation;
+        const hash_map *m_map;
+        usize m_generation;
+        usize m_counter{0};
         std::optional<usize> m_index;
+
+        [[no_unique_address]] mutable raw_storage<value_type> m_cache;
+        mutable bool m_cache_valid{false};
     };
 
     hash_map() = default;
@@ -285,6 +468,35 @@ public:
 
     iterator end() { return {*this, m_generation, true}; }
     iterator_const end() const { return {*this, m_generation, true}; }
+
+    class view_type : public std::ranges::view_interface<view_type> {
+    public:
+        view_type() = default;
+        explicit view_type(hash_map *m)
+                : m_map(m) {}
+
+        iterator begin() { return m_map->begin(); }
+        iterator end() { return m_map->end(); }
+
+    private:
+        hash_map *m_map{nullptr};
+    };
+
+    class view_type_const : public std::ranges::view_interface<view_type_const> {
+    public:
+        view_type_const() = default;
+        explicit view_type_const(const hash_map *m)
+                : m_map(m) {}
+
+        iterator_const begin() const { return m_map->begin(); }
+        iterator_const end() const { return m_map->end(); }
+
+    private:
+        const hash_map *m_map{nullptr};
+    };
+
+    view_type view() { return view_type{this}; }
+    view_type_const view() const { return view_type_const{this}; }
 
     usize size() const { return m_load; }
 
@@ -318,10 +530,11 @@ public:
     }
 
     template<typename... Args>
-    bool emplace(const K &key, Args &&...args){
+    bool emplace(const K &key, Args &&...args) {
         while (true) {
             switch (try_insert(key, std::forward<Args>(args)...)) {
             case try_insert_result::succeeded:
+                m_generation += 1;
                 return true;
             case try_insert_result::rehash_needed: {
                 rehash();
@@ -332,7 +545,7 @@ public:
         }
     }
 
-    bool insert(const K &key, try_move_t<fuck_void<V>> v)  {
+    bool insert(const K &key, try_move_t<fuck_void<V>> v) {
         return emplace(key, std::forward<decltype(v)>(v));
     }
 
@@ -365,10 +578,12 @@ public:
                     s.st = slot::state::tombstone;
                     s.value.destroy();
                     m_load -= 1;
+                    m_generation += 1;
                     return res;
                 } else {
                     s.st = slot::state::tombstone;
                     m_load -= 1;
+                    m_generation += 1;
                     return std::monostate{};
                 }
             } break;

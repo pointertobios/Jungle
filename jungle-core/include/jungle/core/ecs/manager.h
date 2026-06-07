@@ -10,6 +10,7 @@
 #include "jungle/core/ecs/component.h"
 #include "jungle/core/ecs/component_storage.h"
 #include "jungle/core/ecs/entity.h"
+#include "jungle/util/type_mutate.h"
 
 namespace jungle::core::ecs {
 
@@ -20,34 +21,10 @@ template<typename M>
 concept ComponentManager = std::derived_from<M, Manager<>> && !std::is_same_v<M, Manager<>>;
 
 template<>
-class Manager<> {
+class Manager<> : public util::type_mutate<Manager<>> {
 public:
-    template<ComponentManager M>
-    constexpr bool is() const {
-        return m_type == type_id::of<M>();
-    }
-
-    constexpr bool is(type_id manager_type) const { return m_type == manager_type; }
-
-    template<ComponentManager M>
-    constexpr M &as() pre(is<M>()) {
-        return static_cast<M &>(*this);
-    }
-
-    template<ComponentManager M>
-    constexpr const M &as() const pre(is<M>()) {
-        return static_cast<const M &>(*this);
-    }
-
-    template<ComponentManager M>
-    constexpr M *try_as() {
-        return is<M>() ? &static_cast<M &>(*this) : nullptr;
-    }
-
-    template<ComponentManager M>
-    constexpr const M *try_as() const {
-        return is<M>() ? &static_cast<const M &>(*this) : nullptr;
-    }
+    template<typename C>
+    static constexpr bool static_mutatable = ComponentManager<C>;
 
     virtual std::vector<std::reference_wrapper<Component<>>> vget_components() = 0;
     virtual std::vector<std::reference_wrapper<const Component<>>> vget_components() const = 0;
@@ -57,10 +34,7 @@ public:
 
 protected:
     constexpr Manager(type_id type)
-            : m_type{type} {}
-
-private:
-    type_id m_type;
+            : util::type_mutate<Manager<>>{type} {}
 };
 
 template<ComponentImpl C>
@@ -69,8 +43,18 @@ public:
     constexpr Manager()
             : Manager<>{type_id::of<Manager<C>>()} {}
 
-    auto get_components() { m_storage.get_components(); }
-    auto get_components() const { m_storage.get_components(); }
+    template<typename... Args>
+    C &create(ComponentID id, Args &&...args) {
+        return m_storage.create(id, std::forward<Args>(args)...);
+    }
+
+    void destroy(ComponentID id) { m_storage.destroy(id); }
+
+    C &get_component(ComponentID id) { return m_storage.get_component(id); }
+    const C &get_component(ComponentID id) const { return m_storage.get_component(id); }
+
+    auto get_components() { return m_storage.get_components(); }
+    auto get_components() const { return m_storage.get_components(); }
 
     auto get_components(Entity entity) { return m_storage.get_components(entity); }
     auto get_components(Entity entity) const { return m_storage.get_components(entity); }

@@ -14,6 +14,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/util/murmur.h
     ${IPREF}/util/parse.h
     ${IPREF}/util/type_id.h
+    ${IPREF}/util/type_mutate.h
     ${IPREF}/util/types.h
     ${IPREF}/debug.h
     ${IPREF}/meta.h
@@ -40,6 +41,7 @@ set(JUNGLE_OPTIONS
     -fcontracts
     -fno-rtti
     -fno-exceptions
+    -fconcepts-diagnostics-depth=6
     $<$<CONFIG:Debug>:-fcontract-evaluation-semantic=enforce>
     $<$<CONFIG:Release>:-fcontract-evaluation-semantic=quick-enforce>
 )
