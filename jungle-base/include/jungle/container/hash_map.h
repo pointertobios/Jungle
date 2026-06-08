@@ -152,6 +152,9 @@ public:
         }
 
         value_type &operator*() const pre(validative_check() && end_check()) {
+            if (!(validative_check() && end_check())) {
+                panic("assertion failed: validative_check() && end_check()");
+            }  // TODO: workaround gcc contract bug for template function
             if (m_cache_valid) {
                 m_cache.destroy();
             }
@@ -166,6 +169,9 @@ public:
         }
 
         iterator &operator++() pre(validative_check() && end_check()) {
+            if (!(validative_check() && end_check())) {
+                panic("assertion failed: validative_check() && end_check()");
+            }  // TODO: workaround gcc contract bug for template function
             *m_index += 1;
             m_counter += 1;
 
@@ -175,6 +181,9 @@ public:
         }
 
         iterator operator++(int) pre(validative_check() && end_check()) {
+            if (!(validative_check() && end_check())) {
+                panic("assertion failed: validative_check() && end_check()");
+            }  // TODO: workaround gcc contract bug for template function
             iterator res = *this;
             (*this)++;
             return res;
@@ -241,11 +250,18 @@ public:
 
         bool operator==(const iterator &rhs) const
             pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
+            if (!(validative_check() && rhs.validative_check() && m_map == rhs.m_map)) {
+                panic("assertion failed: validative_check() && rhs.validative_check() && m_map == rhs.m_map");
+            }  // TODO: workaround gcc contract bug for template function
             return m_index == rhs.m_index;
         }
 
         friend difference_type operator-(const iterator &lhs, const iterator &rhs)
             pre(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map) {
+            if (!(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map)) {
+                panic(
+                    "assertion failed: lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map");
+            }  // TODO: workaround gcc contract bug for template function
             return static_cast<difference_type>(lhs.m_counter) - static_cast<difference_type>(rhs.m_counter);
         }
 
@@ -317,6 +333,9 @@ public:
         }
 
         const value_type &operator*() const pre(validative_check() && end_check()) {
+            if (!(validative_check() && end_check())) {
+                panic("assertion failed: validative_check() && end_check()");
+            }  // TODO: workaround gcc contract bug for template function
             if (m_cache_valid) {
                 m_cache.destroy();
             }
@@ -331,6 +350,9 @@ public:
         }
 
         iterator_const &operator++() pre(validative_check() && end_check()) {
+            if (!(validative_check() && end_check())) {
+                panic("assertion failed: validative_check() && end_check()");
+            }  // TODO: workaround gcc contract bug for template function
             *m_index += 1;
             m_counter += 1;
             m_cache_valid = false;
@@ -339,6 +361,9 @@ public:
         }
 
         iterator_const operator++(int) pre(validative_check() && end_check()) {
+            if (!(validative_check() && end_check())) {
+                panic("assertion failed: validative_check() && end_check()");
+            }  // TODO: workaround gcc contract bug for template function
             iterator_const res = *this;
             (*this)++;
             return res;
@@ -405,11 +430,18 @@ public:
 
         bool operator==(const iterator_const &rhs) const
             pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
+            if (!(validative_check() && rhs.validative_check() && m_map == rhs.m_map)) {
+                panic("assertion failed: validative_check() && rhs.validative_check() && m_map == rhs.m_map");
+            }  // TODO: workaround gcc contract bug for template function
             return m_index == rhs.m_index;
         }
 
         friend difference_type operator-(const iterator_const &lhs, const iterator_const &rhs)
             pre(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map) {
+            if (!(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map)) {
+                panic(
+                    "assertion failed: lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map");
+            }  // TODO: workaround gcc contract bug for template function
             return static_cast<difference_type>(lhs.m_counter) - static_cast<difference_type>(rhs.m_counter);
         }
 

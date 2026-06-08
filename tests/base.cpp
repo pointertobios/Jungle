@@ -3,11 +3,13 @@
 
 #include <print>
 
+#include "jungle/core/ecs/component_storage.h"
 #include "jungle/core/ecs/entity.h"
 #include "jungle/meta.h"
 #include "jungle/preusing.h"
 
 using namespace jungle;
+using namespace jungle::core::ecs;
 
 enum class Color { Red, Green, Blue };
 
@@ -49,6 +51,19 @@ private:
 
 using namespace literals;
 
+class Transform : public Component<Transform> {
+public:
+    using Storage = SparseComponentStorage<Transform>;
+
+private:
+    float x, y, z;
+};
+
+class Node : public Component<Node> {
+public:
+    using Storage = SparseComponentStorage<Node>;
+};
+
 int main() {
     using core::ecs::Entity;
     Entity entity{0x123456789abcdef0};
@@ -59,4 +74,9 @@ int main() {
     std::println("{}", debug(s));
     jungle::meta::has_template_annotation<^^jungle::core::ecs::Entity, ^^annotation_test>();
     std::println("{}", type_id::of<std::vector<int>>().name());
+
+    auto mgr = Manager<Transform>{};
+    Manager<> &base_mgr = mgr;
+    auto &transform_mgr = base_mgr.as<Manager<Transform>>();
+    (void)transform_mgr;
 }

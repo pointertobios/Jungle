@@ -24,12 +24,18 @@ public:
     template<typename U>
         requires static_mutatable<U>
     constexpr U &as() pre(is<U>()) {
+        if (!is<U>()) {
+            panic("assertion failed: is<U>()");
+        }  // TODO: workaround gcc contract bug for template function
         return static_cast<U &>(*this);
     }
 
     template<typename U>
         requires static_mutatable<U>
     constexpr const U &as() const pre(is<U>()) {
+        if (!is<U>()) {
+            panic("assertion failed: is<U>()");
+        }  // TODO: workaround gcc contract bug for template function
         return static_cast<const U &>(*this);
     }
 
