@@ -3,41 +3,146 @@
 
 #pragma once
 
+#include <array>
 #include <new>
+#include <ranges>
 #include <type_traits>
 
+#include "jungle/algebra/scalar.h"
 #include "jungle/types/int.h"
 
 namespace jungle::algebra {
 
-template<typename T>
-concept algebra_type =
-    (sizeof(T) < std::hardware_destructive_interference_size)
-    && std::is_default_constructible_v<T> && std::movable<T> && std::is_copy_constructible_v<T>
-    && std::is_copy_assignable_v<T> && std::is_trivially_destructible<T> && requires(T a, T b) {
-           { a + b } -> std::convertible_to<T>;
-           { a - b } -> std::convertible_to<T>;
-           { a * b } -> std::convertible_to<T>;
-           { a / b } -> std::convertible_to<T>;
-       };
+template<scalar_type T, usize...>
+class matrix;
 
-template<algebra_type T, usize N, usize M, bool RowMajor = true>
-class matrix {
+template<scalar_type T, usize Line, usize Row>
+class matrix<T, Line, Row> {
 public:
     using value_type = T;
 
-    matrix() = default;
+    constexpr matrix() = default;
 
-    T &operator[](usize x, usize y) {
-        if constexpr (RowMajor) {
-            return m_data[x * M + y];
-        } else {
-            return m_data[y * N + x];
+    constexpr matrix(const matrix &) = default;
+    constexpr matrix &operator=(const matrix &) = default;
+    constexpr matrix(matrix &&) = default;
+    constexpr matrix &operator=(matrix &&) = default;
+
+    constexpr matrix(std::array<std::array<T, Row>, Line> data) {
+        template for (constexpr auto i : std::views::iota(0u, Line)) {
+            template for (constexpr auto j : std::views::iota(0u, Row)) { (*this)[i, j] = data[i][j]; }
         }
     }
 
+    constexpr T &operator[](usize x, usize y) pre(x < Line && y < Row) { return m_data[x * Row + y]; }
+
+    matrix add(const matrix &rhs) const {
+        matrix result{};
+        template for (constexpr auto i : std::views::iota(0u, Line)) {
+            template for (constexpr auto j : std::views::iota(0u, Row)) {
+                result[i, j] = (*this)[i, j] + rhs[i, j];
+            }
+        }
+        return result;
+    }
+
+    matrix subtract(const matrix &rhs) const {
+        matrix result{};
+        template for (constexpr auto i : std::views::iota(0u, Line)) {
+            template for (constexpr auto j : std::views::iota(0u, Row)) {
+                result[i, j] = (*this)[i, j] - rhs[i, j];
+            }
+        }
+        return result;
+    }
+
+    matrix multiply(const T &scalar) const {
+        matrix result{};
+        template for (constexpr auto i : std::views::iota(0u, Line)) {
+            template for (constexpr auto j : std::views::iota(0u, Row)) {
+                result[i, j] = (*this)[i, j] * scalar;
+            }
+        }
+        return result;
+    }
+
+    template<usize RRow>
+    matrix<T, Line, RRow> multiply(const matrix<T, Row, RRow> &rhs) const {
+        matrix<T, Line, RRow> result{};
+        template for (constexpr auto i : std::views::iota(0u, Line)) {
+            template for (constexpr auto j : std::views::iota(0u, RRow)) {
+                T sum{scalar_const<T>::zero};
+                template for (constexpr auto k : std::views::iota(0u, Row)) {
+                    sum += (*this)[i, k] * rhs[k, j];
+                }
+                result[i, j] = sum;
+            }
+        }
+        return result;
+    }
+
+    T dot(const matrix &rhs) const {
+        T sum{scalar_const<T>::zero};
+        template for (constexpr auto i : std::views::iota(0u, Line * Row)) {
+            sum += m_data[i] * rhs.m_data[i];
+        }
+        return sum;
+    }
+
+    T norm() const {
+        T sum{scalar_const<T>::zero};
+        template for (constexpr auto i : std::views::iota(0u, Line * Row)) { sum += m_data[i] * m_data[i]; }
+        return scalar_operator<T>::sqrt(sum);
+    }
+
+    matrix<T, Row, Line> transpose() const {
+        matrix<T, Row, Line> result{};
+        template for (constexpr auto i : std::views::iota(0u, Line)) {
+            template for (constexpr auto j : std::views::iota(0u, Row)) { result[j, i] = (*this)[i, j]; }
+        }
+        return result;
+    }
+
+    template<usize RLine, usize RRow>
+    matrix<T, Line * RLine, Row * RRow> kronecker_multiply(const matrix<T, RLine, RRow> &rhs) const {}
+
 private:
-    T m_data[N * M];
+    std::array<T, Line * Row> m_data;
+};
+
+template<scalar_type T, usize N>
+class matrix<T, N> : public matrix<T, N, N> {
+public:
+    using matrix<T, N, N>::matrix;
+
+    static matrix identity() {
+        matrix result{};
+        template for (constexpr auto i : std::views::iota(0u, N)) { result[i, i] = scalar_const<T>::one; }
+        return result;
+    }
+
+    matrix inverse() const {}
+
+    T determinant() const {}
+
+    T eigen_value() const {}
+
+    matrix<T, N, 1> eigen_vector() const {}
+};
+
+template<scalar_type T, usize N>
+class vector : public matrix<T, N, 1> {
+public:
+    using matrix<T, N, 1>::matrix;
+
+    constexpr vector(const matrix<T, N, 1> &m)
+            : matrix<T, N, 1>{m} {}
+
+    vector normalize() const {}
+
+    vector cross(const vector &rhs) const
+        requires(N == 3)
+    {}
 };
 
 };  // namespace jungle::algebra

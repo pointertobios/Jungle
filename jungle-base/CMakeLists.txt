@@ -7,6 +7,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/concepts.h
     ${IPREF}/container/hash_map.h
     ${IPREF}/algebra/matrix.h
+    ${IPREF}/algebra/scalar.h
     ${IPREF}/serde/serde.h
     ${IPREF}/serde/serialize.h
     ${IPREF}/serde/deserialize.h
