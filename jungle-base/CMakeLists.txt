@@ -6,6 +6,7 @@ set(IPREF "include/jungle") # Include prefix for headers
 set(JUNGLE_HEADERS
     ${IPREF}/concepts.h
     ${IPREF}/container/hash_map.h
+    ${IPREF}/algebra/matrix.h
     ${IPREF}/serde/serde.h
     ${IPREF}/serde/serialize.h
     ${IPREF}/serde/deserialize.h
