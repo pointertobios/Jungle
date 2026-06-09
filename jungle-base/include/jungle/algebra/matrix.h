@@ -132,14 +132,6 @@ public:
         template for (constexpr auto i : std::views::iota(0u, N)) { result[i, i] = scalar_const<T>::one; }
         return result;
     }
-
-    matrix inverse() const {}
-
-    T determinant() const {}
-
-    T eigen_value() const {}
-
-    matrix<T, N, 1> eigen_vector() const {}
 };
 
 template<scalar_type T, usize N>
@@ -150,7 +142,7 @@ public:
     constexpr vector(const matrix<T, N, 1> &m)
             : matrix<T, N, 1>{m} {}
 
-    vector normalize() const {}
+    vector normalize() const { return multiply(scalar_const<T>::one / matrix<T, N, 1>::norm()); }
 
     vector cross(const vector &rhs) const
         requires(N == 3)

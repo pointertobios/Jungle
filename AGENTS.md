@@ -1,38 +1,69 @@
-# Jungle 代理指引
+# Jungle 项目 AI 编程助手指引
 
-## 项目概况
+Jungle 是一个实验性 C++26 游戏引擎，详情参见 [README.md](./README.md)。
 
-- 这个仓库是一个根级 CMake 工程，由 [CMakeLists.txt](CMakeLists.txt) 聚合多个子模块。
-- 当前有实际代码的模块主要是 [jungle-base](jungle-base/CMakeLists.txt) 和 [jungle-core](jungle-core/CMakeLists.txt)。
-- 除非用户明确要求补齐脚手架，否则将 [jungle-api](jungle-api/CMakeLists.txt)、[jungle-client](jungle-client/CMakeLists.txt)、[jungle-server](jungle-server/CMakeLists.txt) 和 [jungle-ui](jungle-ui/CMakeLists.txt) 视为占位模块。
+## 编译器特性
 
-## 构建与测试
+本项目依赖 **GCC 且需要 C++26 扩展**（Clang/MSVC 不支持），关键标志：
 
-- 在仓库根目录配置：`cmake -S . -B build -G Ninja`
-- 构建：`cmake --build build`
-- 运行测试：`ctest --test-dir build --output-on-failure`
-- 项目要求 C++23。非 Windows 主机上，顶层构建会优先选择 libc++ 与 lld 或 mold；不要随意移除这段逻辑。
-- 已提交的 [build](build) 目录是生成产物。除非用户明确要求，否则不要编辑其中的文件。
+- `-freflection` — P2996 编译期反射
+- `-fcontracts` — 契约编程（Debug 强制检查，Release 快速检查）
+- `-fno-rtti` / `-fno-exceptions` — 禁用 RTTI 与异常
+- `-fconcepts-diagnostics-depth=6` — 概念（concept）诊断深度
+- `-Wall -Wextra -Wpedantic -Werror` — 严格警告
 
-## 模块边界
+**AI 编码注意**：不要使用 `try/catch`、`throw`、`dynamic_cast`、`typeid`。错误处理使用 `jungle::panic()` 或 `std::expected`。契约使用 `pre()` / `post()` 属性。
 
-- [jungle-base](jungle-base/CMakeLists.txt) 负责基础类型、解析、哈希、panic 和 type-id 工具。
-- [jungle-core](jungle-core/CMakeLists.txt) 当前负责 ECS 基元，并链接 `jungle::base`。
-- 保持依赖单向流动：core 可以依赖 base，但 base 应保持不依赖 core。
-- 遵循现有公共头文件前缀：
-  - base 头文件：`jungle/...`
-  - core 头文件：`jungle/core/...`
+## 模块架构
 
-## 编辑约定
+| 模块             | 命名空间         | 用途                                               | 状态   |
+| ---------------- | ---------------- | -------------------------------------------------- | ------ |
+| `jungle-base/`   | `jungle::`       | 类型系统、容器、代数、反射、序列化、调试、测试框架 | ✅ 活跃 |
+| `jungle-core/`   | `jungle::core::` | ECS 核心（Entity、Component、Archetype、Manager）  | ✅ 活跃 |
+| `jungle-api/`    | —                | 占位                                               | ❌      |
+| `jungle-client/` | —                | 占位                                               | ❌      |
+| `jungle-server/` | —                | 占位                                               | ❌      |
+| `jungle-ui/`     | —                | 占位                                               | ❌      |
 
-- 遵循 [.clang-format](.clang-format)。仓库使用 LLVM 风格格式化，4 空格缩进，列宽 110。
-- 即使目标启用了预编译头，也要为当前文件直接使用的符号保留显式 include。PCH 配置见 [jungle-base/CMakeLists.txt](jungle-base/CMakeLists.txt) 和 [jungle-core/CMakeLists.txt](jungle-core/CMakeLists.txt)，但它不能替代 direct include。
-- 保留现有的 `#pragma once`、命名空间布局和命名空间结束注释。
-- 如果代码使用 `type_id`、`hash_val` 之类别名，先查看 [jungle-base/include/jungle/preusing.h](jungle-base/include/jungle/preusing.h)，不要重复引入同类别名。
-- 链接时沿用当前库别名风格：`jungle::base`、`jungle::core`。
+依赖：`jungle-core` → `jungle-base`（其他模块目前为空壳）。
 
-## 常见陷阱
+## 命名与代码风格
 
-- 不要根据空的模块 CMake 文件自行推断缺失架构；在发明 client/server/ui 结构前先确认需求。
-- 根目录已经调用 `enable_testing()`，但当前没有真实测试目标。如果要补测试，请在 CMake 中显式接入，不要假定仓库已经选定某个测试框架。
-- 文档发布工作流 [.github/workflows/mdbook.yaml](.github/workflows/mdbook.yaml) 会把两种语言的书都构建到 `docs/book`；修改文档结构时要保持与该布局兼容。
+- **文件头**：所有文件以 `// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>` 和 `// SPDX-License-Identifier: MIT` 开头
+- **Include guard**：统一使用 `#pragma once`
+- **命名空间**：模块 `jungle-X` 使用 `jungle::X::`，基础库使用 `jungle::`。闭合格式：`};  // namespace jungle::X`
+- **类型名**：PascalCase（如 `ComponentID`、`hash_map`）
+- **函数与变量**：snake_case
+- **成员变量**：`m_` 前缀（如 `m_data`、`m_id`）
+- **注释**：中文
+
+## 测试
+
+使用自定义测试框架，位于 `jungle-base/include/jungle/test/test.h`：
+
+```cpp
+#include "jungle/test/test.h"
+
+JUNGLE_SYNC_TEST(test_name) {
+    JUNGLE_SYNC_ASSERT(condition, "failure message {}", args...);
+    JUNGLE_SYNC_SUCCESS();
+}
+```
+
+- 单元测试：`<module>/unit_tests/*.cpp`
+- 集成测试：`tests/`
+- 测试库目标：`jungle::test`
+
+## 关键自定义类型
+
+- `jungle::ustr` — Unicode 字符串（核心类型，广泛使用）
+- `jungle::hash_map<K,V>` — 自定义哈希表
+- `jungle::panic()` — 致命错误（变参格式化版本可用）
+- `jungle::debug(T&)` — 基于反射的调试打印
+- 固定宽度整数类型定义于 `jungle/types/int.h`
+
+## 文档
+
+- 简体中文文档：[docs/zh-cn/src/](./docs/zh-cn/src/)
+- 英文文档：[docs/en-us/src/](./docs/en-us/src/)
+- 文档使用 mdBook 构建，参见 [SUMMARY.md](./docs/zh-cn/src/SUMMARY.md)

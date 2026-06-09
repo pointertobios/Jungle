@@ -2,44 +2,6 @@
 
 Jungle 是一个实验性游戏引擎，旨在探索现代 C++ 标准（C++26）在游戏开发中的应用。项目充分利用编译期反射、契约（contracts）等新特性，构建类型安全、零开销的基础设施层。
 
-### 模块结构
-
-```
-jungle-base/     基础库：类型系统、序列化框架、反射工具、测试框架
-jungle-core/     ECS 核心：Entity、Component、Archetype
-jungle-api/      占位模块
-jungle-client/   占位模块
-jungle-server/   占位模块
-jungle-ui/       占位模块
-```
-
-当前有实际代码的模块是 `jungle-base` 和 `jungle-core`，其余为预留模块。
-
-## 构建
-
-### 依赖
-
-- CMake 3.20+
-- 支持 C++26 反射扩展（`-freflection`）的 GCC 编译器
-- Ninja（推荐构建系统）
-
-### 配置与编译
-
-```bash
-cmake -S . -B build -G Ninja
-cmake --build build
-```
-
-编译器选项：C++26 标准、反射扩展（`-freflection`）、契约（`-fcontracts`）、禁用 RTTI 和异常。
-
-## 运行测试
-
-```bash
-ctest --test-dir build --output-on-failure
-```
-
-单元测试位于 `jungle-base/unit_tests/`，集成测试位于 `tests/`。
-
 ## 文档
 
 - [简体中文](https://pointertobios.github.io/Jungle/zhcn/)
