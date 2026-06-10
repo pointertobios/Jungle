@@ -10,11 +10,13 @@
 #include "jungle/core/ecs/component.h"
 #include "jungle/core/ecs/manager.h"
 
+#include "jungle/core/component/transform.h"
+
 namespace jungle::core {
 
-template<ComponentImpl... Cs>
+template<ecs::ComponentImpl... Cs>
 class Managers {
-    template<ComponentManager M>
+    template<ecs::ComponentManager M>
     static consteval bool has_manager() {
         return (std::is_same_v<M, ecs::Manager<Cs>> || ...);
     }
@@ -26,15 +28,15 @@ public:
 
     auto get_managers() const { return m_managers.view(); }
 
-    template<ComponentManager M>
+    template<ecs::ComponentManager M>
         requires(has_manager<M>())
     M &get_manager() {
         return *m_managers.get(type_id::of<M>());
     }
 
-    template<ComponentImpl C>
+    template<ecs::ComponentImpl C>
         requires(has_manager<ecs::Manager<C>>())
-    ecs::Manager<C> &get_manager() {
+    ecs::Manager<C> &get_manager_of_component() {
         return *m_managers.get(type_id::of<ecs::Manager<C>>());
     }
 
@@ -46,8 +48,10 @@ class Level {
 public:
     Level() = default;
 
+    auto managers() { return m_managers; }
+
 private:
-    Managers<> m_managers;
+    Managers<Transform> m_managers;
 };
 
 };  // namespace jungle::core

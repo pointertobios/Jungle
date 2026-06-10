@@ -12,14 +12,24 @@
 namespace jungle::util {
 
 class type_id {
+    friend struct std::hash<type_id>;
+
     template<typename T>
     constexpr static u8 identifier = 0;
 
 public:
     using type_hash = hash_val;
 
+    constexpr type_id() = default;
+
     constexpr type_id(const type_id &) = default;
-    type_id &operator=(const type_id &) = delete;
+    constexpr type_id &operator=(const type_id &rhs) {
+        if (this != &rhs) {
+            this->~type_id();
+            new (this) type_id(rhs);
+        }
+        return *this;
+    }
 
     constexpr type_id(type_id &&) = default;
     constexpr type_id &operator=(type_id &&rhs) {
@@ -59,3 +69,10 @@ private:
 };
 
 };  // namespace jungle::util
+
+template<>
+struct std::hash<jungle::util::type_id> {
+    std::size_t operator()(const jungle::util::type_id &id) const {
+        return reinterpret_cast<std::size_t>(id.m_identifier);
+    }
+};
