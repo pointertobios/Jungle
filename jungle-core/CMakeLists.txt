@@ -9,6 +9,8 @@ set(JUNGLE_HEADERS
     ${IPREF}/ecs/component.h
     ${IPREF}/ecs/entity.h
     ${IPREF}/ecs/manager.h
+    ${IPREF}/game.h
+    ${IPREF}/level.h
 )
 
 set(JUNGLE_SOURCES
