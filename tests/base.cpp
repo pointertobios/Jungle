@@ -53,19 +53,6 @@ private:
 
 using namespace literals;
 
-class Transform : public Component<Transform> {
-public:
-    using Storage = SparseComponentStorage<Transform>;
-
-private:
-    float x, y, z;
-};
-
-class Node : public Component<Node> {
-public:
-    using Storage = SparseComponentStorage<Node>;
-};
-
 int main() {
     using core::ecs::Entity;
     Entity entity{0x123456789abcdef0};
@@ -82,5 +69,5 @@ int main() {
     auto &transform_mgr = base_mgr.as<Manager<Transform>>();
     (void)transform_mgr;
 
-    Level level;
+    core::Level level;
 }

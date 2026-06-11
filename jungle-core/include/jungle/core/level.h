@@ -48,7 +48,7 @@ class Level {
 public:
     Level() = default;
 
-    auto managers() { return m_managers; }
+    auto &managers() { return m_managers; }
 
 private:
     Managers<Transform> m_managers;
