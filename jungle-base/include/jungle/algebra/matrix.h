@@ -36,6 +36,18 @@ public:
 
     constexpr T &operator[](usize x, usize y) pre(x < Line && y < Row) { return m_data[x * Row + y]; }
 
+    constexpr const T &operator[](usize x, usize y) const pre(x < Line && y < Row) {
+        return m_data[x * Row + y];
+    }
+
+    consteval static matrix zero() {
+        matrix result{};
+        for (auto &d : result.m_data) {
+            d = scalar_const<T>::zero;
+        }
+        return result;
+    }
+
     matrix add(const matrix &rhs) const {
         matrix result{};
         template for (constexpr auto i : std::views::iota(0u, Line)) {
@@ -118,7 +130,7 @@ public:
         return result;
     }
 
-private:
+protected:
     std::array<T, Line * Row> m_data;
 };
 
@@ -137,16 +149,34 @@ public:
 template<scalar_type T, usize N>
 class vector : public matrix<T, N, 1> {
 public:
-    using matrix<T, N, 1>::matrix;
+    constexpr vector() = default;
 
     constexpr vector(const matrix<T, N, 1> &m)
             : matrix<T, N, 1>{m} {}
 
-    vector normalize() const { return multiply(scalar_const<T>::one / matrix<T, N, 1>::norm()); }
+    constexpr vector(std::array<T, N> data) {
+        template for (constexpr auto i : std::views::iota(0u, N)) {
+            matrix<T, N, 1>::operator[](i, 0) = data[i];
+        }
+    }
+
+    constexpr T &operator[](usize i) pre(i < N) { return matrix<T, N, 1>::operator[](i, 0); }
+
+    constexpr const T &operator[](usize i) const pre(i < N) { return matrix<T, N, 1>::operator[](i, 0); }
+
+    vector normalize() const {
+        return matrix<T, N, 1>::multiply(scalar_const<T>::one / matrix<T, N, 1>::norm());
+    }
 
     vector cross(const vector &rhs) const
         requires(N == 3)
-    {}
+    {
+        vector result{};
+        result[0] = (*this)[1] * rhs[2] - (*this)[2] * rhs[1];
+        result[1] = (*this)[2] * rhs[0] - (*this)[0] * rhs[2];
+        result[2] = (*this)[0] * rhs[1] - (*this)[1] * rhs[0];
+        return result;
+    }
 };
 
 template<scalar_type T>

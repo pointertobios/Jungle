@@ -65,6 +65,7 @@ add_library(jungle::test ALIAS jungle-test)
 set(JUNGLE_UNIT_TEST_SOURCES
     unit_tests/hash_map.cpp
     unit_tests/serde_text.cpp
+    unit_tests/algebra_matrix.cpp
 )
 
 add_executable(jungle-base-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})

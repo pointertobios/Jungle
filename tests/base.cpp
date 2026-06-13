@@ -9,7 +9,6 @@
 #include "jungle/meta.h"
 #include "jungle/preusing.h"
 
-
 using namespace jungle;
 using namespace jungle::core::ecs;
 
@@ -62,12 +61,6 @@ int main() {
     std::println("{}", debug(entity));
     std::println("{}", debug(s));
     jungle::meta::has_template_annotation<^^jungle::core::ecs::Entity, ^^annotation_test>();
-    std::println("{}", type_id::of<std::vector<int>>().name());
-
-    auto mgr = Manager<Transform>{};
-    Manager<> &base_mgr = mgr;
-    auto &transform_mgr = base_mgr.as<Manager<Transform>>();
-    (void)transform_mgr;
 
     core::Level level;
 }
