@@ -171,11 +171,9 @@ public:
     vector cross(const vector &rhs) const
         requires(N == 3)
     {
-        vector result{};
-        result[0] = (*this)[1] * rhs[2] - (*this)[2] * rhs[1];
-        result[1] = (*this)[2] * rhs[0] - (*this)[0] * rhs[2];
-        result[2] = (*this)[0] * rhs[1] - (*this)[1] * rhs[0];
-        return result;
+        return vector{
+            {(*this)[1] * rhs[2] - (*this)[2] * rhs[1], (*this)[2] * rhs[0] - (*this)[0] * rhs[2],
+             (*this)[0] * rhs[1] - (*this)[1] * rhs[0]}};
     }
 };
 

@@ -352,13 +352,24 @@ JUNGLE_SYNC_TEST(vector_normalize) {
     JUNGLE_SYNC_SUCCESS();
 }
 
-JUNGLE_SYNC_TEST(vector_cross_product_compiles) {
-    vector<float, 3> a({1.0f, 0.0f, 0.0f});
-    vector<float, 3> b({0.0f, 1.0f, 0.0f});
+JUNGLE_SYNC_TEST(vector_cross_product) {
+    vector3f a({1.0f, 0.0f, 0.0f});
+    vector3f b({0.0f, 1.0f, 0.0f});
 
     auto c = a.cross(b);
 
-    (void)c;
+    JUNGLE_SYNC_ASSERT(c[0] == 0.0f, "i×j should have x=0");
+    JUNGLE_SYNC_ASSERT(c[1] == 0.0f, "i×j should have y=0");
+    JUNGLE_SYNC_ASSERT(c[2] == 1.0f, "i×j should have z=1");
+
+    vector3f d({2.0f, 3.0f, 4.0f});
+    vector3f e({5.0f, 6.0f, 7.0f});
+
+    auto f = d.cross(e);
+
+    JUNGLE_SYNC_ASSERT(f[0] == -3.0f, "3*7-4*6 should be -3");
+    JUNGLE_SYNC_ASSERT(f[1] == 6.0f, "4*5-2*7 should be 6");
+    JUNGLE_SYNC_ASSERT(f[2] == -3.0f, "2*6-3*5 should be -3");
     JUNGLE_SYNC_SUCCESS();
 }
 
