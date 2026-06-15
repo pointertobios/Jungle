@@ -4,35 +4,54 @@
 set(IPREF "include/jungle") # Include prefix for headers
 
 set(JUNGLE_HEADERS
-    ${IPREF}/concepts.h
-    ${IPREF}/container/hash_map.h
     ${IPREF}/algebra/matrix.h
     ${IPREF}/algebra/scalar.h
+    ${IPREF}/container/hash_map.h
+    ${IPREF}/container/mpsc.h
+    ${IPREF}/debug.h
+    ${IPREF}/meta.h
+    ${IPREF}/os/process.h
+    ${IPREF}/os/terminal.h
+    ${IPREF}/panic.h
+    ${IPREF}/preusing.h
     ${IPREF}/serde/serde.h
     ${IPREF}/serde/serialize.h
     ${IPREF}/serde/deserialize.h
+    ${IPREF}/types/concepts.h
     ${IPREF}/types/int.h
+    ${IPREF}/types/raw_storage.h
+    ${IPREF}/types/types.h
     ${IPREF}/types/uchar.h
     ${IPREF}/util/murmur.h
     ${IPREF}/util/parse.h
     ${IPREF}/util/type_id.h
     ${IPREF}/util/type_mutate.h
-    ${IPREF}/util/types.h
-    ${IPREF}/debug.h
-    ${IPREF}/meta.h
-    ${IPREF}/panic.h
-    ${IPREF}/preusing.h
 )
 
 set(JUNGLE_SOURCES
+    src/os/process.cpp
+    src/panic.cpp
     src/types/uchar.cpp
     src/util/parse.cpp
-    src/panic.cpp
 )
 
 set(JUNGLE_DEPLIBS
     stdc++exp
 )
+
+if (LINUX)
+    set(JUNGLE_SOURCES ${JUGNLE_SOURCES}
+        src/os/linux/process.cpp
+        src/os/linux/terminal.cpp
+    )
+
+    set(JUNGLE_DEPLIBS ${JUNGLE_DEPLIBS} ncurses)
+elseif (WIN32)
+    set(ASCO_SOURCES ${ASCO_SOURCES}
+        src/os/windows/process.cpp
+        src/os/windows/terminal.cpp
+    )
+endif()
 
 set(JUNGLE_OPTIONS
     -Wall

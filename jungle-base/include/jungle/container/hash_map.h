@@ -11,12 +11,12 @@
 #include <utility>
 #include <vector>
 
-#include "jungle/concepts.h"
 #include "jungle/panic.h"
+#include "jungle/types/concepts.h"
 #include "jungle/types/int.h"
 #include "jungle/types/raw_storage.h"
+#include "jungle/types/types.h"
 #include "jungle/util/murmur.h"
-#include "jungle/util/types.h"
 
 namespace jungle {
 

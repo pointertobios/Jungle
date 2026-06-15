@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "jungle/concepts.h"
+#include "jungle/types/concepts.h"
 #include "jungle/types/int.h"
 
 namespace jungle {
