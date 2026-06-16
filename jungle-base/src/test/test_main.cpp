@@ -36,13 +36,18 @@ bool add_sync_test(std::string_view name, test_func func, std::source_location l
 
 };  // namespace jungle::test
 
+using namespace jungle;
+
 int main() {
+    usize fail_count{0};
     for (const auto &[area, name, func] : jungle::test::sync_test_cases()) {
         auto result = func();
         if (!result) {
             std::println("[FAILED] {}::{}\n{}", area, name, result.error());
+            fail_count += 1;
         } else {
             std::println("[PASSED] {}::{}", area, name);
         }
     }
+    return -fail_count;
 }
