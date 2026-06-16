@@ -39,8 +39,8 @@ struct base64_encoder_view : public std::ranges::view_interface<base64_encoder_v
     template<std::ranges::contiguous_range R>
         requires std::same_as<std::ranges::range_value_t<R>, u8>
     constexpr base64_encoder_view(R &range)
-            : m_data(std::ranges::data(range))
-            , m_n(static_cast<usize>(std::ranges::size(range))) {}
+            : m_data{std::ranges::data(range)}
+            , m_n{static_cast<usize>(std::ranges::size(range))} {}
 
     iterator begin() const;
     iterator end() const;

@@ -9,10 +9,10 @@
 using namespace jungle::algebra;
 
 JUNGLE_SYNC_TEST(matrix_construction_from_array) {
-    matrix<float, 2, 2> m({{
-            {1.0f, 2.0f},
-            {3.0f, 4.0f},
-        }});
+    matrix<float, 2, 2> m{{{
+        {1.0f, 2.0f},
+        {3.0f, 4.0f},
+    }}};
 
     JUNGLE_SYNC_ASSERT((m[0, 0]) == 1.0f, "element (0,0) should match source array");
     JUNGLE_SYNC_ASSERT((m[0, 1]) == 2.0f, "element (0,1) should match source array");
@@ -56,14 +56,14 @@ JUNGLE_SYNC_TEST(matrix_zero_factory) {
 }
 
 JUNGLE_SYNC_TEST(matrix_add) {
-    matrix<float, 2, 2> a({{
-            {1.0f, 2.0f},
-            {3.0f, 4.0f},
-        }});
-    matrix<float, 2, 2> b({{
-            {5.0f, 6.0f},
-            {7.0f, 8.0f},
-        }});
+    matrix<float, 2, 2> a{{{
+        {1.0f, 2.0f},
+        {3.0f, 4.0f},
+    }}};
+    matrix<float, 2, 2> b{{{
+        {5.0f, 6.0f},
+        {7.0f, 8.0f},
+    }}};
 
     auto r = a.add(b);
 
@@ -75,14 +75,14 @@ JUNGLE_SYNC_TEST(matrix_add) {
 }
 
 JUNGLE_SYNC_TEST(matrix_subtract) {
-    matrix<float, 2, 2> a({{
-            {5.0f, 7.0f},
-            {9.0f, 11.0f},
-        }});
-    matrix<float, 2, 2> b({{
-            {1.0f, 2.0f},
-            {3.0f, 4.0f},
-        }});
+    matrix<float, 2, 2> a{{{
+        {5.0f, 7.0f},
+        {9.0f, 11.0f},
+    }}};
+    matrix<float, 2, 2> b{{{
+        {1.0f, 2.0f},
+        {3.0f, 4.0f},
+    }}};
 
     auto r = a.subtract(b);
 
@@ -94,10 +94,10 @@ JUNGLE_SYNC_TEST(matrix_subtract) {
 }
 
 JUNGLE_SYNC_TEST(matrix_multiply_scalar) {
-    matrix<float, 2, 3> m({{
-            {1.0f, 2.0f, 3.0f},
-            {4.0f, 5.0f, 6.0f},
-        }});
+    matrix<float, 2, 3> m{{{
+        {1.0f, 2.0f, 3.0f},
+        {4.0f, 5.0f, 6.0f},
+    }}};
 
     auto r = m.multiply(2.0f);
 
@@ -111,10 +111,10 @@ JUNGLE_SYNC_TEST(matrix_multiply_scalar) {
 }
 
 JUNGLE_SYNC_TEST(matrix_multiply_scalar_integer_type) {
-    matrix<int, 2, 2> m({{
-            {1, 2},
-            {3, 4},
-        }});
+    matrix<int, 2, 2> m{{{
+        {1, 2},
+        {3, 4},
+    }}};
 
     auto r = m.multiply(3);
 
@@ -126,15 +126,15 @@ JUNGLE_SYNC_TEST(matrix_multiply_scalar_integer_type) {
 }
 
 JUNGLE_SYNC_TEST(matrix_multiply_matrix) {
-    matrix<float, 2, 3> a({{
-            {1.0f, 2.0f, 3.0f},
-            {4.0f, 5.0f, 6.0f},
-        }});
-    matrix<float, 3, 2> b({{
-            {7.0f, 8.0f},
-            {9.0f, 10.0f},
-            {11.0f, 12.0f},
-        }});
+    matrix<float, 2, 3> a{{{
+        {1.0f, 2.0f, 3.0f},
+        {4.0f, 5.0f, 6.0f},
+    }}};
+    matrix<float, 3, 2> b{{{
+        {7.0f, 8.0f},
+        {9.0f, 10.0f},
+        {11.0f, 12.0f},
+    }}};
 
     auto r = a.multiply(b);
 
@@ -146,14 +146,14 @@ JUNGLE_SYNC_TEST(matrix_multiply_matrix) {
 }
 
 JUNGLE_SYNC_TEST(matrix_multiply_matrix_square) {
-    matrix<float, 2, 2> a({{
-            {1.0f, 2.0f},
-            {3.0f, 4.0f},
-        }});
-    matrix<float, 2, 2> b({{
-            {2.0f, 0.0f},
-            {1.0f, 2.0f},
-        }});
+    matrix<float, 2, 2> a{{{
+        {1.0f, 2.0f},
+        {3.0f, 4.0f},
+    }}};
+    matrix<float, 2, 2> b{{{
+        {2.0f, 0.0f},
+        {1.0f, 2.0f},
+    }}};
 
     auto r = a.multiply(b);
 
@@ -165,14 +165,14 @@ JUNGLE_SYNC_TEST(matrix_multiply_matrix_square) {
 }
 
 JUNGLE_SYNC_TEST(matrix_dot_product) {
-    matrix<float, 2, 2> a({{
+    matrix<float, 2, 2> a{{{
         {1.0f, 2.0f},
         {3.0f, 4.0f},
-    }});
-    matrix<float, 2, 2> b({{
+    }}};
+    matrix<float, 2, 2> b{{{
         {5.0f, 6.0f},
         {7.0f, 8.0f},
-    }});
+    }}};
 
     auto d = a.dot(b);
 
@@ -181,14 +181,14 @@ JUNGLE_SYNC_TEST(matrix_dot_product) {
 }
 
 JUNGLE_SYNC_TEST(matrix_dot_product_int) {
-    matrix<int, 2, 2> a({{
+    matrix<int, 2, 2> a{{{
         {1, 2},
         {3, 4},
-    }});
-    matrix<int, 2, 2> b({{
+    }}};
+    matrix<int, 2, 2> b{{{
         {1, 1},
         {1, 1},
-    }});
+    }}};
 
     auto d = a.dot(b);
 
@@ -197,10 +197,10 @@ JUNGLE_SYNC_TEST(matrix_dot_product_int) {
 }
 
 JUNGLE_SYNC_TEST(matrix_norm) {
-    matrix<float, 2, 2> m({{
+    matrix<float, 2, 2> m{{{
         {1.0f, 2.0f},
         {3.0f, 4.0f},
-    }});
+    }}};
 
     auto n = m.norm();
 
@@ -209,10 +209,10 @@ JUNGLE_SYNC_TEST(matrix_norm) {
 }
 
 JUNGLE_SYNC_TEST(matrix_transpose_rectangular) {
-    matrix<float, 2, 3> m({{
+    matrix<float, 2, 3> m{{{
         {1.0f, 2.0f, 3.0f},
         {4.0f, 5.0f, 6.0f},
-    }});
+    }}};
 
     auto t = m.transpose();
 
@@ -226,10 +226,10 @@ JUNGLE_SYNC_TEST(matrix_transpose_rectangular) {
 }
 
 JUNGLE_SYNC_TEST(matrix_transpose_square) {
-    matrix<float, 2, 2> m({{
+    matrix<float, 2, 2> m{{{
         {1.0f, 2.0f},
         {3.0f, 4.0f},
-    }});
+    }}};
 
     auto t = m.transpose();
 
@@ -241,14 +241,14 @@ JUNGLE_SYNC_TEST(matrix_transpose_square) {
 }
 
 JUNGLE_SYNC_TEST(matrix_kronecker_multiply) {
-    matrix<float, 2, 2> a({{
+    matrix<float, 2, 2> a{{{
         {1.0f, 2.0f},
         {3.0f, 4.0f},
-    }});
-    matrix<float, 2, 3> b({{
+    }}};
+    matrix<float, 2, 3> b{{{
         {0.0f, 5.0f, 0.0f},
         {6.0f, 7.0f, 0.0f},
-    }});
+    }}};
 
     auto k = a.kronecker_multiply(b);
 
@@ -282,11 +282,11 @@ JUNGLE_SYNC_TEST(square_matrix_identity) {
 }
 
 JUNGLE_SYNC_TEST(square_matrix_identity_multiply_yields_original) {
-    matrix<float, 3, 3> m({{
+    matrix<float, 3, 3> m{{{
         {2.0f, 3.0f, 5.0f},
         {7.0f, 11.0f, 13.0f},
         {17.0f, 19.0f, 23.0f},
-    }});
+    }}};
     auto id = matrix<float, 3>::identity();
 
     auto r = m.multiply(id);
@@ -304,7 +304,7 @@ JUNGLE_SYNC_TEST(square_matrix_identity_multiply_yields_original) {
 }
 
 JUNGLE_SYNC_TEST(vector_construction_from_array) {
-    vector<float, 3> v({1.0f, 2.0f, 3.0f});
+    vector<float, 3> v{{1.0f, 2.0f, 3.0f}};
 
     JUNGLE_SYNC_ASSERT(v[0] == 1.0f, "vector element 0 should match source array");
     JUNGLE_SYNC_ASSERT(v[1] == 2.0f, "vector element 1 should match source array");
@@ -313,14 +313,13 @@ JUNGLE_SYNC_TEST(vector_construction_from_array) {
 }
 
 JUNGLE_SYNC_TEST(vector_construction_from_matrix) {
-    matrix<float, 4, 1> m(
-        std::array<std::array<float, 1>, 4>{{
-            {5.0f},
-            {6.0f},
-            {7.0f},
-            {8.0f},
-        }});
-    vector<float, 4> v(m);
+    matrix<float, 4, 1> m{{{
+        {5.0f},
+        {6.0f},
+        {7.0f},
+        {8.0f},
+    }}};
+    vector<float, 4> v{m};
 
     JUNGLE_SYNC_ASSERT(v[0] == 5.0f, "vector from matrix should preserve element 0");
     JUNGLE_SYNC_ASSERT(v[1] == 6.0f, "vector from matrix should preserve element 1");
@@ -343,7 +342,7 @@ JUNGLE_SYNC_TEST(vector_element_access) {
 }
 
 JUNGLE_SYNC_TEST(vector_normalize) {
-    vector<float, 2> v({3.0f, 4.0f});
+    vector<float, 2> v{{3.0f, 4.0f}};
 
     auto n = v.normalize();
 
@@ -353,8 +352,8 @@ JUNGLE_SYNC_TEST(vector_normalize) {
 }
 
 JUNGLE_SYNC_TEST(vector_cross_product) {
-    vector3f a({1.0f, 0.0f, 0.0f});
-    vector3f b({0.0f, 1.0f, 0.0f});
+    vector3f a{{1.0f, 0.0f, 0.0f}};
+    vector3f b{{0.0f, 1.0f, 0.0f}};
 
     auto c = a.cross(b);
 
@@ -362,8 +361,8 @@ JUNGLE_SYNC_TEST(vector_cross_product) {
     JUNGLE_SYNC_ASSERT(c[1] == 0.0f, "i×j should have y=0");
     JUNGLE_SYNC_ASSERT(c[2] == 1.0f, "i×j should have z=1");
 
-    vector3f d({2.0f, 3.0f, 4.0f});
-    vector3f e({5.0f, 6.0f, 7.0f});
+    vector3f d{{2.0f, 3.0f, 4.0f}};
+    vector3f e{{5.0f, 6.0f, 7.0f}};
 
     auto f = d.cross(e);
 
@@ -400,18 +399,18 @@ JUNGLE_SYNC_TEST(vector_type_aliases_compile) {
 }
 
 JUNGLE_SYNC_TEST(matrix_add_subtract_chain) {
-    matrix<float, 2, 2> a({{
-            {10.0f, 20.0f},
-            {30.0f, 40.0f},
-        }});
-    matrix<float, 2, 2> b({{
-            {1.0f, 2.0f},
-            {3.0f, 4.0f},
-        }});
-    matrix<float, 2, 2> c({{
-            {5.0f, 6.0f},
-            {7.0f, 8.0f},
-        }});
+    matrix<float, 2, 2> a{{{
+        {10.0f, 20.0f},
+        {30.0f, 40.0f},
+    }}};
+    matrix<float, 2, 2> b{{{
+        {1.0f, 2.0f},
+        {3.0f, 4.0f},
+    }}};
+    matrix<float, 2, 2> c{{{
+        {5.0f, 6.0f},
+        {7.0f, 8.0f},
+    }}};
 
     auto r = a.subtract(b).add(c);
 

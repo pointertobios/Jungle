@@ -26,7 +26,7 @@ public:
     constexpr type_id &operator=(const type_id &rhs) {
         if (this != &rhs) {
             this->~type_id();
-            new (this) type_id(rhs);
+            new (this) type_id{rhs};
         }
         return *this;
     }
@@ -35,7 +35,7 @@ public:
     constexpr type_id &operator=(type_id &&rhs) {
         if (this != &rhs) {
             this->~type_id();
-            new (this) type_id(std::move(rhs));
+            new (this) type_id{std::move(rhs)};
         }
         return *this;
     }

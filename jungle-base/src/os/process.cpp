@@ -16,7 +16,7 @@ cpu_set cpu_set::with(usize id) && {
 std::vector<usize> &cpu_set::get_all() { return m_cpus; }
 
 thread_handle::thread_handle(std::thread::native_handle_type tid)
-        : m_tid(tid) {}
+        : m_tid{tid} {}
 
 thread_handle thread_handle::from(std::thread &t) { return {t.native_handle()}; }
 

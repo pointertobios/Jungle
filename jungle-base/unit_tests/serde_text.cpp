@@ -46,8 +46,8 @@ struct serde_text_test_with_private {
     int public_value;
 
     constexpr serde_text_test_with_private(int public_value, int private_value)
-            : public_value(public_value)
-            , private_value(private_value) {}
+            : public_value{public_value}
+            , private_value{private_value} {}
 
 private:
     int private_value;
@@ -342,8 +342,8 @@ JUNGLE_SYNC_TEST(text_target_all_fields_marked_behaves_like_default) {
 
 struct serde_text_test_all_private {
     constexpr serde_text_test_all_private(int x, int y)
-            : m_x(x)
-            , m_y(y) {}
+            : m_x{x}
+            , m_y{y} {}
 
     int sum() const { return m_x + m_y; }
 

@@ -62,7 +62,7 @@ struct uchar {
 
 private:
     constexpr uchar(u32 value)
-            : m_value(value) {}
+            : m_value{value} {}
 
     u32 m_value{0};
 };

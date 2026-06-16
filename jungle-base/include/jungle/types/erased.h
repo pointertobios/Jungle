@@ -20,9 +20,9 @@ public:
     template<typename T>
     erased(T &&value) noexcept
             : m_align{alignof(T)}
-            , m_storage(::operator new(sizeof(T), std::align_val_t{alignof(T)}))
-            , m_deleter(default_deleter<T>) {
-        new (m_storage) T(std::move(value));
+            , m_storage{::operator new(sizeof(T), std::align_val_t{alignof(T)})}
+            , m_deleter{default_deleter<T>} {
+        new (m_storage) T{std::move(value)};
     }
 
     template<typename T>
@@ -45,7 +45,7 @@ public:
     erased &operator=(erased &&rhs) noexcept {
         if (this != &rhs) {
             this->~erased();
-            new (this) erased(std::move(rhs));
+            new (this) erased{std::move(rhs)};
         }
         return *this;
     }

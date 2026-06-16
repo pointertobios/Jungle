@@ -16,7 +16,7 @@ struct TestCompX : Component<TestCompX> {
     int value;
 
     TestCompX(Entity e, ComponentID id, int v)
-            : Component<TestCompX>(e, id)
+            : Component<TestCompX>{e, id}
             , value{v} {}
 };
 
@@ -26,7 +26,7 @@ struct TestCompY : Component<TestCompY> {
     float data;
 
     TestCompY(Entity e, ComponentID id, float d)
-            : Component<TestCompY>(e, id)
+            : Component<TestCompY>{e, id}
             , data{d} {}
 };
 

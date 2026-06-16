@@ -34,12 +34,12 @@ struct S {
     } anonymous_struct{};
 
     S(int x, int y, Color color, core::ecs::Entity e, T t, int priv)
-            : x(x)
-            , y(y)
-            , color(color)
-            , e(e)
-            , t(t)
-            , priv(priv) {}
+            : x{x}
+            , y{y}
+            , color{color}
+            , e{e}
+            , t{t}
+            , priv{priv} {}
 
 private:
     friend struct core::ecs::Entity;

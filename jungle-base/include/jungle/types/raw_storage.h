@@ -24,7 +24,7 @@ public:
 
     template<typename... Args>
     T &emplace(Args &&...args) {
-        return *new (std::launder(storage)) T(std::forward<Args>(args)...);
+        return *new (std::launder(storage)) T{std::forward<Args>(args)...};
     }
 
     void destroy() { std::launder(reinterpret_cast<T *>(storage))->~T(); }

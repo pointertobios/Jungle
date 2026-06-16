@@ -505,7 +505,7 @@ public:
     public:
         view_type() = default;
         explicit view_type(hash_map *m)
-                : m_map(m) {}
+                : m_map{m} {}
 
         iterator begin() { return m_map->begin(); }
         iterator end() { return m_map->end(); }
@@ -518,7 +518,7 @@ public:
     public:
         view_type_const() = default;
         explicit view_type_const(const hash_map *m)
-                : m_map(m) {}
+                : m_map{m} {}
 
         iterator_const begin() const { return m_map->begin(); }
         iterator_const end() const { return m_map->end(); }
