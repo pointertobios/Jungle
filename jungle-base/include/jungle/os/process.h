@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -36,7 +37,7 @@ public:
     static thread_handle from(std::thread &t);
     static thread_handle from(std::jthread &t);
 
-    bool set_name(const std::string &name);
+    bool set_name(std::string name);
 
     bool set_affinity(cpu_set cpuset);
 

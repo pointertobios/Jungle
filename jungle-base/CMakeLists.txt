@@ -14,6 +14,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/os/terminal.h
     ${IPREF}/panic.h
     ${IPREF}/preusing.h
+    ${IPREF}/runtime/daemon.h
     ${IPREF}/serde/serde.h
     ${IPREF}/serde/serialize.h
     ${IPREF}/serde/deserialize.h
@@ -30,6 +31,7 @@ set(JUNGLE_HEADERS
 
 set(JUNGLE_SOURCES
     src/os/process.cpp
+    src/runtime/daemon.cpp
     src/panic.cpp
     src/types/uchar.cpp
     src/util/parse.cpp
