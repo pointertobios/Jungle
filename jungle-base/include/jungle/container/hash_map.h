@@ -210,7 +210,7 @@ public:
             return *this;
         }
 
-        iterator(iterator &&other) noexcept
+        iterator(iterator &&other)
                 : m_map{other.m_map}
                 , m_generation{other.m_generation}
                 , m_counter{other.m_counter}
@@ -225,7 +225,7 @@ public:
             }
         }
 
-        iterator &operator=(iterator &&other) noexcept {
+        iterator &operator=(iterator &&other) {
             if (this == &other) {
                 return *this;
             }
@@ -390,7 +390,7 @@ public:
             return *this;
         }
 
-        iterator_const(iterator_const &&other) noexcept
+        iterator_const(iterator_const &&other)
                 : m_map{other.m_map}
                 , m_generation{other.m_generation}
                 , m_counter{other.m_counter}
@@ -405,7 +405,7 @@ public:
             }
         }
 
-        iterator_const &operator=(iterator_const &&other) noexcept {
+        iterator_const &operator=(iterator_const &&other) {
             if (this == &other) {
                 return *this;
             }

@@ -12,7 +12,8 @@ include/jungle/
 ├── panic.h           # 不可恢复错误处理
 ├── preusing.h        # 常用类型别名集中引入
 ├── container/        # 容器
-│   └── hash_map.h    # 自定义哈希映射
+│   ├── hash_map.h    # 自定义哈希映射
+│   └── mpsc.h        # MPSC 无锁有界队列
 ├── serde/            # 序列化反序列化框架
 │   ├── serde.h       # 概念定义与注解
 │   ├── serialize.h   # SerializeTarget 基类与 serialize() 自由函数

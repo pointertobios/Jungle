@@ -3,45 +3,115 @@
 
 #pragma once
 
+#include <atomic>
+#include <bit>
 #include <memory>
+#include <optional>
 #include <tuple>
 #include <vector>
 
-#include "jungle/preusing.h"
+#include "jungle/constants.h"
+#include "jungle/types/concepts.h"
+#include "jungle/types/int.h"
+#include "jungle/types/raw_storage.h"
+#include "jungle/types/types.h"
 
 namespace jungle::container {
 
-template<typename T>
+template<concepts::non_void T>
 class mpsc final {
+    struct slot {
+        raw_storage<T> m_data;
+        std::atomic_bool m_commited{false};
+    };
+
 public:
     class sender final {
+        friend class mpsc;
+
     public:
+        sender(const sender &) = default;
+        sender &operator=(const sender &) = default;
+
+        sender(sender &&) = default;
+        sender &operator=(sender &&) = default;
+
+        [[nodiscard]] bool send(try_move_t<T> value) {
+            if (mask(m_payload->m_tail.load(morder::acquire) + 1)
+                == mask(m_payload->m_head.load(morder::acquire))) {
+                return false;
+            }
+            auto location = mask(m_payload->m_tail.fetch_add(1, morder::acq_rel));
+            auto &s = m_payload->m_queue[location];
+            s.m_data.emplace(try_move(value));
+            s.m_commited.store(true, morder::release);
+            return true;
+        }
+
+    private:
+        usize mask(usize x) const { return m_payload->mask(x); }
+
         sender(std::shared_ptr<mpsc> payload)
                 : m_payload{payload} {}
 
-    private:
         std::shared_ptr<mpsc> m_payload;
     };
 
     class receiver final {
+        friend class mpsc;
+
     public:
+        receiver(const sender &) = delete;
+        receiver &operator=(const sender &) = delete;
+
+        receiver(sender &&rhs)
+                : m_payload{std::move(rhs.m_payload)} {}
+
+        receiver &operator=(sender &&rhs) {
+            if (this != &rhs) {
+                m_payload = std::move(rhs.m_payload);
+            }
+            return *this;
+        }
+
+        [[nodiscard]] std::optional<T> recv() {
+            auto location = mask(m_payload->m_head.load(morder::acquire));
+            auto &s = m_payload->m_queue[location];
+            if (!s.m_commited.load(morder::acquire)) {
+                return std::nullopt;
+            }
+            std::optional<T> res(try_move(*s.m_data.get()));
+            s.m_data.destroy();
+            s.m_commited.store(false, morder::release);
+            m_payload->m_head.fetch_add(1, morder::release);
+            return res;
+        }
+
+    private:
+        usize mask(usize x) const { return m_payload->mask(x); }
+
         receiver(std::shared_ptr<mpsc> payload)
                 : m_payload{payload} {}
 
-    private:
         std::shared_ptr<mpsc> m_payload;
     };
 
-    static std::tuple<sender, receiver> queue(usize size = 1024) {
+    static std::tuple<sender, receiver> queue(usize size = 1023) {
         auto payload = std::make_shared<mpsc>(size);
         return {sender{payload}, receiver{payload}};
     }
 
     mpsc(usize size)
-            : m_queue(size) {}
+            : m_capacity_mask{(1 << std::bit_width(size)) - 1}
+            , m_queue{1 << std::bit_width(size)} {}
 
 private:
-    std::vector<raw_storage<T>> m_queue;
+    usize mask(usize x) const { return x & m_capacity_mask; }
+
+    const usize m_capacity_mask;
+    std::vector<slot> m_queue;
+    std::atomic<usize> m_tail;
+    std::atomic<usize> m_head;
 };
 
 };  // namespace jungle::container

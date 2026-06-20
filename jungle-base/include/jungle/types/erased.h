@@ -18,7 +18,7 @@ public:
     erased() = default;
 
     template<typename T>
-    erased(T &&value) noexcept
+    erased(T &&value)
             : m_align{alignof(T)}
             , m_storage{::operator new(sizeof(T), std::align_val_t{alignof(T)})}
             , m_deleter{default_deleter<T>} {
@@ -26,7 +26,7 @@ public:
     }
 
     template<typename T>
-    erased(ref<T> &&value) noexcept
+    erased(ref<T> &&value)
             : m_align{alignof(T)}
             , m_storage{&value.v}
             , m_deleter{nullptr} {}
@@ -34,7 +34,7 @@ public:
     erased(const erased &) = delete;
     erased &operator=(const erased &) = delete;
 
-    erased(erased &&rhs) noexcept
+    erased(erased &&rhs)
             : m_align{rhs.m_align}
             , m_storage{rhs.m_storage}
             , m_deleter{rhs.m_deleter} {
@@ -42,7 +42,7 @@ public:
         rhs.m_deleter = nullptr;
     }
 
-    erased &operator=(erased &&rhs) noexcept {
+    erased &operator=(erased &&rhs) {
         if (this != &rhs) {
             this->~erased();
             new (this) erased{std::move(rhs)};
@@ -51,12 +51,12 @@ public:
     }
 
     template<typename T>
-    T &get() noexcept {
+    T &get() {
         return *reinterpret_cast<T *>(m_storage);
     }
 
     template<typename T>
-    const T &get() const noexcept {
+    const T &get() const {
         return *reinterpret_cast<const T *>(m_storage);
     }
 

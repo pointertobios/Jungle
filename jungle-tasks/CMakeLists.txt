@@ -6,7 +6,9 @@ set(IPREF "include/jungle") # Include prefix for headers
 set(JUNGLE_HEADERS
     ${IPREF}/future.h
     ${IPREF}/sync/mpsc.h
+    ${IPREF}/task.h
     ${IPREF}/tasks/runtime/runtime.h
+    ${IPREF}/tasks/runtime/worker.h
 )
 
 set(JUNGLE_SOURCES

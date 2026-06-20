@@ -18,8 +18,6 @@ class type_id {
     constexpr static u8 identifier = 0;
 
 public:
-    using type_hash = hash_val;
-
     constexpr type_id() = default;
 
     constexpr type_id(const type_id &) = default;

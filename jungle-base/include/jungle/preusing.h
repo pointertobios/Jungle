@@ -3,19 +3,16 @@
 
 #pragma once
 
-#include <new>
-
 #include "jungle/algebra/matrix.h"
-#include "jungle/types/int.h"    // IWYU pragma: keep
-#include "jungle/types/uchar.h"  // IWYU pragma: keep
-#include "jungle/util/murmur.h"
-#include "jungle/util/type_id.h"
+#include "jungle/constants.h"       // IWYU pragma: keep
+#include "jungle/types/concepts.h"  // IWYU pragma: keep
+#include "jungle/types/int.h"       // IWYU pragma: keep
+#include "jungle/types/types.h"     // IWYU pragma: keep
+#include "jungle/types/uchar.h"     // IWYU pragma: keep
+#include "jungle/util/type_id.h"    // IWYU pragma: keep
 
 namespace jungle {
 
-inline constexpr usize cacheline_size = std::hardware_destructive_interference_size;
-
-using hash_val = util::hash_val;
 using type_id = util::type_id;
 
 using vector2f = algebra::vector2f;

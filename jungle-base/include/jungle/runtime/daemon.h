@@ -15,14 +15,16 @@ public:
     daemon();
     daemon(ustr name);
 
+    void run(std::stop_token &st);
+
 protected:
+    void start();
+
     virtual bool initialize() = 0;
     virtual bool run_once(std::stop_token &) = 0;
     virtual void finalize() = 0;
 
 private:
-    void daemon_thread(std::stop_token &st);
-
     std::jthread m_thread;
 
     ustr m_name{"jg-daemon"};

@@ -5,6 +5,7 @@ Jungle 是一个实验性游戏引擎，旨在探索现代 C++ 标准（C++26）
 ## 文档
 
 - [简体中文](https://pointertobios.github.io/Jungle/zhcn/)
+- [English](https://pointertobios.github.io/Jungle/enus/)
 
 ## Roadmap
 

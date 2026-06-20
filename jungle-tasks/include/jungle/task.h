@@ -8,13 +8,12 @@
 
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
-#include "jungle/task.h"
 #include "jungle/types/raw_storage.h"
 
-namespace jungle::tasks {
+namespace jungle {
 
-template<typename T = void>
-class [[nodiscard("A future<T> must always be co_await'ed once")]] future final {
+template<typename T>
+class task final {
 public:
     using output_type = T;
 
@@ -29,9 +28,9 @@ private:
     };
 
     struct promise_base {
-        friend class future;
+        friend class task;
 
-        future *m_future;
+        task *m_future;
 
         std::suspend_always initial_suspend() { return {}; }
 
@@ -40,21 +39,17 @@ private:
         auto final_suspend() {
             struct final_awaitable {
                 coroutine_handle this_coroutine;
-                std::coroutine_handle<> waiter_coroutine;
 
                 bool await_ready() { return false; }
 
-                auto await_suspend(std::coroutine_handle<>) {
-                    this_coroutine.destroy();
-                    return waiter_coroutine;
-                }
+                void await_suspend(std::coroutine_handle<>) { this_coroutine.destroy(); }
 
                 void await_resume() {}
             };
             if (m_future->m_state != future_state::complete) {
                 m_future->m_state = future_state::complete;
             }
-            return final_awaitable{m_future->m_this_coroutine, m_future->m_waiter_coroutine};
+            return final_awaitable{m_future->m_this_coroutine};
         }
     };
 
@@ -77,23 +72,22 @@ private:
 
 public:
     struct promise_type : public promise_base_type {
-        future get_return_object() { return future{this, coroutine_handle::from_promise(*this)}; }
+        task get_return_object() { return task{this, coroutine_handle::from_promise(*this)}; }
     };
 
-    future() = default;
+    task() = default;
 
-    future(const future &) = delete;
-    future &operator=(const future &) = delete;
+    task(const task &) = delete;
+    task &operator=(const task &) = delete;
 
-    future(future &&rhs) pre(!rhs.is_empty())
+    task(task &&rhs) pre(!rhs.is_empty())
             : m_promise{rhs.m_promise}
             , m_state{rhs.m_state}
-            , m_this_coroutine{rhs.m_this_coroutine}
-            , m_waiter_coroutine{rhs.m_waiter_coroutine} {
+            , m_this_coroutine{rhs.m_this_coroutine} {
         m_promise->m_future = this;
     }
 
-    future &operator=(future &&rhs) pre(!rhs.is_empty() && !is_empty()) {
+    task &operator=(task &&rhs) pre(!rhs.is_empty() && !is_empty()) {
         if (this != &rhs) {
             m_promise = rhs.m_promise;
             m_state = rhs.m_state;
@@ -102,37 +96,12 @@ public:
         return *this;
     }
 
-    bool is_empty() const { return m_state == future_state::empty; }
+    bool is_empty() const { return m_state != future_state::empty; }
 
-    task<T> as_task(this future self) {
-        if constexpr (concepts::is_void<T>) {
-            co_await self;
-            co_return;
-        } else {
-            co_return co_await self;
-        }
-    }
-
-    bool await_ready() pre(!is_empty()) { return false; }
-
-    auto await_suspend(std::coroutine_handle<> waiter) pre(!is_empty()) {
-        m_waiter_coroutine = waiter;
-        return m_this_coroutine;
-    }
-
-    T await_resume() pre(!is_empty()) {
-        if constexpr (concepts::is_void<T>) {
-            m_state = future_state::empty;
-            return;
-        } else {
-            T res{try_move(*m_storage.get())};
-            m_state = future_state::empty;
-            return res;
-        }
-    }
+    void resume() const pre(!is_empty()) { m_this_coroutine.resume(); }
 
 private:
-    future(promise_type *promise, coroutine_handle this_coroutine)
+    task(promise_type *promise, coroutine_handle this_coroutine)
             : m_promise{promise}
             , m_state{future_state::non_complete}
             , m_this_coroutine{this_coroutine} {
@@ -144,7 +113,6 @@ private:
     future_state m_state{future_state::empty};
 
     coroutine_handle m_this_coroutine{};
-    std::coroutine_handle<> m_waiter_coroutine{};
 };
 
-};  // namespace jungle::tasks
+};  // namespace jungle

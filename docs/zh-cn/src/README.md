@@ -12,7 +12,7 @@ Jungle 是一个基于 C++26 反射的实验性游戏引擎，探索现代 C++ �
 
 - 暂时仅支持 GCC
 - C++26 标准
-- 反射扩展（`-freflection`）
+- 反射（`-freflection`）
 - 契约（`-fcontracts`）
 - 禁用 RTTI（`-fno-rtti`）
 - 禁用异常（`-fno-exceptions`）

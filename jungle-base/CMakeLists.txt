@@ -42,7 +42,7 @@ set(JUNGLE_DEPLIBS
 )
 
 if (LINUX)
-    set(JUNGLE_SOURCES ${JUGNLE_SOURCES}
+    set(JUNGLE_SOURCES ${JUNGLE_SOURCES}
         src/os/linux/process.cpp
         src/os/linux/terminal.cpp
     )
@@ -85,6 +85,7 @@ add_library(jungle::test ALIAS jungle-test)
 
 set(JUNGLE_UNIT_TEST_SOURCES
     unit_tests/hash_map.cpp
+    unit_tests/mpsc.cpp
     unit_tests/serde_text.cpp
     unit_tests/algebra_matrix.cpp
 )

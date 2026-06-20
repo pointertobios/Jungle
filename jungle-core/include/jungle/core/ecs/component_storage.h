@@ -12,7 +12,7 @@
 
 #include "jungle/container/hash_map.h"
 #include "jungle/core/ecs/component.h"
-#include "jungle/types/raw_storage.h"
+#include "jungle/preusing.h"
 
 namespace jungle::core::ecs {
 

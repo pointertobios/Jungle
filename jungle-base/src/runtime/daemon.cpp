@@ -6,19 +6,21 @@
 
 namespace jungle::runtime {
 
-daemon::daemon()
-        : m_thread{[this](std::stop_token st) { daemon_thread(st); }} {}
+daemon::daemon() {}
 
 daemon::daemon(ustr name)
-        : m_thread{[this](std::stop_token st) { daemon_thread(st); }}
-        , m_name{name} {}
+        : m_name{name} {}
 
-void daemon::daemon_thread(std::stop_token &st) {
+void daemon::start() {
+    m_thread = std::jthread{[this](std::stop_token st) { run(st); }};
+}
+
+void daemon::run(std::stop_token &st) {
     os::thread_handle::from(m_thread).set_name(std::string{m_name.view()});
     if (!initialize()) {
         return;
     }
-    while (run_once(st) && !st.stop_requested()) {}
+    while (run_once(st)) {}
     finalize();
 }
 
