@@ -16,7 +16,7 @@
 #include "jungle/types/raw_storage.h"
 #include "jungle/types/types.h"
 
-namespace jungle::container {
+namespace jungle {
 
 template<concepts::non_void T>
 class mpsc final {
@@ -30,13 +30,17 @@ public:
         friend class mpsc;
 
     public:
+        sender() = default;
+
         sender(const sender &) = default;
         sender &operator=(const sender &) = default;
 
         sender(sender &&) = default;
         sender &operator=(sender &&) = default;
 
-        [[nodiscard]] bool send(try_move_t<T> value) {
+        bool is_valid() const { return m_payload != nullptr; }
+
+        [[nodiscard]] bool send(try_move_t<T> value) pre(is_valid()) {
             if (mask(m_payload->m_tail.load(morder::acquire) + 1)
                 == mask(m_payload->m_head.load(morder::acquire))) {
                 return false;
@@ -54,13 +58,15 @@ public:
         sender(std::shared_ptr<mpsc> payload)
                 : m_payload{payload} {}
 
-        std::shared_ptr<mpsc> m_payload;
+        std::shared_ptr<mpsc> m_payload{nullptr};
     };
 
     class receiver final {
         friend class mpsc;
 
     public:
+        receiver() = default;
+
         receiver(const sender &) = delete;
         receiver &operator=(const sender &) = delete;
 
@@ -74,7 +80,9 @@ public:
             return *this;
         }
 
-        [[nodiscard]] std::optional<T> recv() {
+        bool is_valid() const { return m_payload != nullptr; }
+
+        [[nodiscard]] std::optional<T> recv() pre(is_valid()) {
             auto location = mask(m_payload->m_head.load(morder::acquire));
             auto &s = m_payload->m_queue[location];
             if (!s.m_commited.load(morder::acquire)) {
@@ -93,7 +101,7 @@ public:
         receiver(std::shared_ptr<mpsc> payload)
                 : m_payload{payload} {}
 
-        std::shared_ptr<mpsc> m_payload;
+        std::shared_ptr<mpsc> m_payload{nullptr};
     };
 
     static std::tuple<sender, receiver> queue(usize size = 1023) {
@@ -114,4 +122,4 @@ private:
     std::atomic<usize> m_head;
 };
 
-};  // namespace jungle::container
+};  // namespace jungle

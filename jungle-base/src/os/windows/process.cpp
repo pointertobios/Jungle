@@ -58,6 +58,8 @@ bool set_thread_name(std::thread::native_handle_type tid, const std::string &nam
     return SUCCEEDED(hr);
 }
 
+thread_handle thread_handle::this_thread() { return {GetCurrentThread()}; }
+
 bool thread_handle::set_name(std::string name) { return set_thread_name(m_tid, name); }
 
 bool thread_handle::set_affinity(cpu_set cpuset) { return set_thread_affinity(m_tid, std::move(cpuset)); }

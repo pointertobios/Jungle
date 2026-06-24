@@ -5,14 +5,18 @@ set(IPREF "include/jungle") # Include prefix for headers
 
 set(JUNGLE_HEADERS
     ${IPREF}/future.h
+    ${IPREF}/join_handle.h
     ${IPREF}/sync/mpsc.h
-    ${IPREF}/task.h
+    ${IPREF}/sync/rwspinlock.h
     ${IPREF}/tasks/runtime/runtime.h
+    ${IPREF}/tasks/runtime/sched/scheduler.h
     ${IPREF}/tasks/runtime/worker.h
 )
 
 set(JUNGLE_SOURCES
-    src/runtime/runtime.cpp
+    src/tasks/runtime/runtime.cpp
+    src/tasks/runtime/sched/scheduler.cpp
+    src/tasks/runtime/worker.cpp
 )
 
 add_library(jungle-tasks ${JUNGLE_SOURCES})
@@ -25,6 +29,7 @@ add_library(jungle::tasks ALIAS jungle-tasks)
 
 set(JUNGLE_UNIT_TEST_SOURCES
     unit_tests/future.cpp
+    unit_tests/rwspinlock.cpp
 )
 
 add_executable(jungle-tasks-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})

@@ -8,6 +8,7 @@
 #include "jungle/core/level.h"
 #include "jungle/meta.h"
 #include "jungle/preusing.h"
+#include "jungle/tasks/runtime/runtime.h"
 
 using namespace jungle;
 using namespace jungle::core::ecs;
@@ -63,4 +64,8 @@ int main() {
     jungle::meta::has_template_annotation<^^jungle::core::ecs::Entity, ^^annotation_test>();
 
     core::Level level;
+
+    using jungle::tasks::runtime::runtime_config;
+
+    runtime_config{}.build();
 }

@@ -2,5 +2,5 @@
 # SPDX-License-Identifier: MIT
 
 add_executable(base base.cpp)
-target_link_libraries(base jungle::core)
+target_link_libraries(base jungle::core jungle::tasks)
 add_test(base base)

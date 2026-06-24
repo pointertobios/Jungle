@@ -10,7 +10,7 @@
 #include <vector>
 
 using namespace jungle;
-using container::mpsc;
+using jungle::mpsc;
 
 JUNGLE_SYNC_TEST(mpsc_queue_creates_sender_receiver_pair) {
     auto [sender, receiver] = mpsc<int>::queue();
@@ -255,13 +255,13 @@ JUNGLE_SYNC_TEST(mpsc_large_object_move_semantics) {
             for (auto &d : data)
                 d = fill;
         }
-        large(large &&other) noexcept
+        large(large &&other)
                 : moved_from{false} {
             for (usize i = 0; i < 64; ++i)
                 data[i] = other.data[i];
             other.moved_from = true;
         }
-        large &operator=(large &&other) noexcept {
+        large &operator=(large &&other) {
             if (this != &other) {
                 for (usize i = 0; i < 64; ++i)
                     data[i] = other.data[i];

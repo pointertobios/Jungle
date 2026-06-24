@@ -3,21 +3,30 @@
 
 #pragma once
 
+#include <semaphore>
+#include <stop_token>
 #include <thread>
 
 #include "jungle/preusing.h"
+#include "jungle/tasks/runtime/worker.h"
 
 namespace jungle::tasks::runtime {
 
 class runtime;
 
 class runtime_config {
-public:
-    runtime start() &&;
+    friend class runtime;
 
-    runtime_config concurrency(usize n) &&;
+public:
+    runtime_config() = default;
+
+    runtime build() &&;
+
+    runtime_config single_threaded() &&;
+    runtime_config multi_threaded(usize n) &&;
 
 private:
+    bool m_multi_thread{true};
     usize m_concurrency{std::thread::hardware_concurrency()};
 };
 
@@ -26,9 +35,26 @@ class runtime final {
 
 public:
     explicit runtime();
+    ~runtime();
+
+    static bool exsits() { return tls_this_runtime; }
+    static runtime &current() { return *tls_this_runtime; }
+
+    void main_loop() pre(!m_multi_threaded);
+
+    void stop() pre(!m_multi_threaded);
 
 private:
     explicit runtime(runtime_config config);
+
+    const bool m_multi_threaded;
+
+    std::stop_source m_stop;
+
+    std::vector<task_sender> m_senders{};
+    std::vector<std::unique_ptr<worker>> m_workers{};
+
+    inline static runtime *tls_this_runtime;
 };
 
 };  // namespace jungle::tasks::runtime

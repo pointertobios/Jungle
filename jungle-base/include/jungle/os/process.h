@@ -36,6 +36,7 @@ public:
 
     static thread_handle from(std::thread &t);
     static thread_handle from(std::jthread &t);
+    static thread_handle this_thread();
 
     bool set_name(std::string name);
 

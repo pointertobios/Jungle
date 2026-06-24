@@ -6,9 +6,9 @@
 #include <coroutine>
 #include <utility>
 
+#include "jungle/join_handle.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
-#include "jungle/task.h"
 #include "jungle/types/raw_storage.h"
 
 namespace jungle::tasks {
@@ -104,7 +104,7 @@ public:
 
     bool is_empty() const { return m_state == future_state::empty; }
 
-    task<T> as_task(this future self) {
+    join_handle<T> as_task(this future self) {
         if constexpr (concepts::is_void<T>) {
             co_await self;
             co_return;
