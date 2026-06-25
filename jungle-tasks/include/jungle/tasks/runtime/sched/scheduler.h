@@ -11,6 +11,7 @@
 #include <queue>
 
 #include "jungle/container/hash_map.h"
+#include "jungle/container/mpsc.h"
 #include "jungle/sync/rwspinlock.h"
 #include "jungle/types/raw_storage.h"
 
@@ -42,13 +43,18 @@ public:
     std::optional<task> next_task();
     void resched(task t) pre(t.m_id == m_current_task);
     void suspend(task t) pre(t.m_id == m_current_task);
+    void awake(task_id id);
 
 private:
+    void awake_impl(task_id id);
+
     task_id m_current_task;
 
     std::array<reschedule_slot, reschedule_slots_size> m_reschedule_slots;
     sync::rwspinlock<std::deque<task>, true> m_queue;
     hash_map<task_id, task> m_suspended_tasks;
+
+    std::tuple<mpsc<task_id>::sender, mpsc<task_id>::receiver> m_pending_awake{mpsc<task_id>::queue()};
 };
 
 };  // namespace jungle::tasks::runtime::sched

@@ -49,10 +49,12 @@ if (LINUX)
 
     set(JUNGLE_DEPLIBS ${JUNGLE_DEPLIBS} ncurses)
 elseif (WIN32)
-    set(ASCO_SOURCES ${ASCO_SOURCES}
+    set(JUNGLE_SOURCES ${JUNGLE_SOURCES}
         src/os/windows/process.cpp
         src/os/windows/terminal.cpp
     )
+
+    set(JUNGLE_DEPLIBS ${JUNGLE_DEPLIBS} atomic)
 endif()
 
 set(JUNGLE_OPTIONS

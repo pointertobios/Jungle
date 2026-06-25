@@ -67,5 +67,5 @@ int main() {
 
     using jungle::tasks::runtime::runtime_config;
 
-    runtime_config{}.build();
+    auto rt = runtime_config{}.multi_threaded().build();
 }

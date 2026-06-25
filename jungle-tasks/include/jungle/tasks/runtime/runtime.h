@@ -23,7 +23,7 @@ public:
     runtime build() &&;
 
     runtime_config single_threaded() &&;
-    runtime_config multi_threaded(usize n) &&;
+    runtime_config multi_threaded(usize n = std::thread::hardware_concurrency()) &&;
 
 private:
     bool m_multi_thread{true};

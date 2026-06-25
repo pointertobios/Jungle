@@ -49,16 +49,18 @@ bool set_thread_affinity(std::thread::native_handle_type tid, cpu_set cpuset) {
         return false;
     }
 
-    return SetThreadGroupAffinity(tid, &ga, nullptr) != 0;
+    return SetThreadGroupAffinity(reinterpret_cast<HANDLE>(tid), &ga, nullptr) != 0;
 }
 
 bool set_thread_name(std::thread::native_handle_type tid, const std::string &name) {
     const auto wname = std::wstring(name.begin(), name.end());
-    const auto hr = SetThreadDescription(tid, wname.c_str());
+    const auto hr = SetThreadDescription(reinterpret_cast<HANDLE>(tid), wname.c_str());
     return SUCCEEDED(hr);
 }
 
-thread_handle thread_handle::this_thread() { return {GetCurrentThread()}; }
+thread_handle thread_handle::this_thread() {
+    return {reinterpret_cast<std::thread::native_handle_type>(GetCurrentThread())};
+}
 
 bool thread_handle::set_name(std::string name) { return set_thread_name(m_tid, name); }
 

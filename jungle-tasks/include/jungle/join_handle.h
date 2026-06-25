@@ -6,6 +6,7 @@
 #include <atomic>
 #include <coroutine>
 #include <memory>
+#include <semaphore>
 #include <utility>
 
 #include "jungle/panic.h"
@@ -32,6 +33,8 @@ private:
     struct task_block {
         std::atomic<future_state> m_state;
         [[no_unique_address]] raw_storage<T> m_storage{};
+
+        std::binary_semaphore m_sync_awaiter;
     };
 
     struct promise_base {
@@ -55,8 +58,10 @@ private:
             };
             {
                 auto old = future_state::non_complete;
-                m_task_block->m_state.compare_exchange_strong(
-                    old, future_state::complete, morder::acq_rel, morder::relaxed);
+                if (m_task_block->m_state.compare_exchange_strong(
+                        old, future_state::complete, morder::acq_rel, morder::relaxed)) {
+                    promise_base::m_task_block->m_sync_awaiter.release();
+                }
             }
             using tasks::runtime::worker;
             if (worker::exists()) {
@@ -72,6 +77,7 @@ private:
         void return_void()
             pre(promise_base::m_task_block->m_state.load(morder::relaxed) == future_state::non_complete) {
             promise_base::m_task_block->m_state.store(future_state::complete, morder::acq_rel);
+            promise_base::m_task_block->m_sync_awaiter.release();
         }
     };
 
@@ -80,6 +86,7 @@ private:
             pre(promise_base::m_task_block->m_state.load(morder::acquire) == future_state::non_complete) {
             promise_base::m_task_block->m_storage.emplace(try_move(value));
             promise_base::m_task_block->m_state.store(future_state::complete, morder::release);
+            promise_base::m_task_block->m_sync_awaiter.release();
         }
     };
 
@@ -121,7 +128,27 @@ public:
 
     bool is_empty() const { return m_this_coroutine; }
 
-    void resume() pre(!is_empty()) { m_this_coroutine.resume(); }
+    bool await_ready() pre(!is_empty()) {
+        return m_task_block->m_state.load(morder::acquire) == future_state::complete;
+    }
+
+    auto await_suspend(std::coroutine_handle<> waiter) pre(!is_empty()) {
+        m_waiter_coroutine = waiter;
+        return m_this_coroutine;
+    }
+
+    T await_resume() pre(!is_empty()) {
+        if constexpr (concepts::is_void<T>) {
+            m_state = future_state::empty;
+            return;
+        } else {
+            T res{try_move(*m_storage.get())};
+            m_state = future_state::empty;
+            return res;
+        }
+    }
+
+    T blocking_await() {}
 
 private:
     join_handle(coroutine_handle this_coroutine, std::shared_ptr<task_block> task_block_ptr)

@@ -12,6 +12,14 @@ void scheduler::attach_task(std::coroutine_handle<> root_coroutine) {
 }
 
 std::optional<task> scheduler::next_task() {
+    auto &[_, rx] = m_pending_awake;
+    {
+        std::optional<task_id> t;
+        while ((t = rx.recv())) {
+            awake_impl(*t);
+        }
+    }
+
     for (auto &slot : m_reschedule_slots) {
         if (slot.available) {
             slot.available = false;
@@ -52,5 +60,16 @@ void scheduler::resched(task t) {
 }
 
 void scheduler::suspend(task t) { m_suspended_tasks.insert(t.m_id, try_move(t)); }
+
+void awake(task_id id) {
+    auto &[tx, _] = m_pending_awake;
+    tx.send(id);
+}
+
+void awake_impl(task_id id) {
+    if (auto t = m_suspended_tasks.remove(id)) {
+        resched(*t);
+    }
+}
 
 };  // namespace jungle::tasks::runtime::sched

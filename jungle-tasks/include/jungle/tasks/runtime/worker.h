@@ -27,6 +27,8 @@ public:
     static bool exists() { return tls_this_worker; }
     static worker &current() { return *tls_this_worker; }
 
+    sched::scheduler &get_scheduler() { return m_scheduler; }
+
     bool fetch_task();
 
     task_id this_task() const;
@@ -47,6 +49,13 @@ private:
     bool m_suspend_now;
 
     inline thread_local static worker *tls_this_worker{nullptr};
+};
+
+class awake_token {
+public:
+private:
+    worker &m_worker{worker::current()};
+    task_id m_task;
 };
 
 };  // namespace jungle::tasks::runtime
