@@ -56,4 +56,14 @@ bool worker::run_once(std::stop_token &st) {
 
 void worker::finalize() {}
 
+void awake_token::suspend() {
+    m_worker->set_suspend_now();
+    m_worker->set_next_resume(m_task);
+}
+
+void awake_token::awake() {
+    m_worker->get_scheduler().awake(m_task);
+    m_worker->awake();
+}
+
 };  // namespace jungle::tasks::runtime

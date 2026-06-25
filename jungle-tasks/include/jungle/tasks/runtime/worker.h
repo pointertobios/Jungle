@@ -17,12 +17,18 @@ namespace jungle::tasks::runtime {
 using task_sender = mpsc<std::coroutine_handle<>>::sender;
 using task_receiver = mpsc<std::coroutine_handle<>>::receiver;
 
+class runtime;
+
 class worker final : public jungle::runtime::daemon {
+    friend class awake_token;
+
 public:
     worker(usize wid, task_receiver task_rx)
             : daemon{ustr::format("jg::w{}", wid)}
             , m_wid{wid}
             , m_task_rx{std::move(task_rx)} {}
+
+    bool operator==(const worker &rhs) const { return m_wid == rhs.m_wid; }
 
     static bool exists() { return tls_this_worker; }
     static worker &current() { return *tls_this_worker; }
@@ -44,6 +50,7 @@ private:
     task_receiver m_task_rx;
 
     sched::scheduler m_scheduler;
+    /* 当前状态 */
     task_id m_this_task;
     std::coroutine_handle<> m_next_resume;
     bool m_suspend_now;
@@ -53,9 +60,22 @@ private:
 
 class awake_token {
 public:
+    awake_token() pre(worker::exists()) = default;
+
+    operator bool() const { return m_worker; }
+
+    static awake_token none() { return awake_token{nullptr, task_id{}}; }
+
+    void suspend() pre(*m_worker == worker::current());
+    void awake();
+
 private:
-    worker &m_worker{worker::current()};
-    task_id m_task;
+    awake_token(worker *w, task_id t)
+            : m_worker{w}
+            , m_task{t} {}
+
+    worker *m_worker{&worker::current()};
+    task_id m_task{m_worker->m_this_task};
 };
 
 };  // namespace jungle::tasks::runtime

@@ -6,12 +6,11 @@
 #include <coroutine>
 #include <utility>
 
-#include "jungle/join_handle.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
 #include "jungle/types/raw_storage.h"
 
-namespace jungle::tasks {
+namespace jungle::async {
 
 template<typename T = void>
 class [[nodiscard("A future<T> must always be co_await'ed once")]] future final {
@@ -104,15 +103,6 @@ public:
 
     bool is_empty() const { return m_state == future_state::empty; }
 
-    join_handle<T> as_task(this future self) {
-        if constexpr (concepts::is_void<T>) {
-            co_await self;
-            co_return;
-        } else {
-            co_return co_await self;
-        }
-    }
-
     bool await_ready() pre(!is_empty()) { return false; }
 
     auto await_suspend(std::coroutine_handle<> waiter) pre(!is_empty()) {
@@ -126,6 +116,7 @@ public:
             return;
         } else {
             T res{try_move(*m_storage.get())};
+            m_storage.destroy();
             m_state = future_state::empty;
             return res;
         }
@@ -147,4 +138,4 @@ private:
     std::coroutine_handle<> m_waiter_coroutine{};
 };
 
-};  // namespace jungle::tasks
+};  // namespace jungle::async

@@ -14,7 +14,7 @@
 #include "jungle/tasks/runtime/worker.h"
 #include "jungle/types/raw_storage.h"
 
-namespace jungle {
+namespace jungle::async {
 
 template<typename T>
 class join_handle final {
@@ -27,12 +27,14 @@ public:
 private:
     enum future_state {
         non_complete,
+        awaited,
         complete,
     };
 
     struct task_block {
         std::atomic<future_state> m_state;
         [[no_unique_address]] raw_storage<T> m_storage{};
+        tasks::runtime::awake_token m_awake_token;
 
         std::binary_semaphore m_sync_awaiter;
     };
@@ -57,9 +59,11 @@ private:
                 void await_resume() {}
             };
             {
-                auto old = future_state::non_complete;
-                if (m_task_block->m_state.compare_exchange_strong(
-                        old, future_state::complete, morder::acq_rel, morder::relaxed)) {
+                auto s = m_task_block->m_state.exchange(future_state::complete, morder::acq_rel);
+                if (s != future_state::complete) {
+                    if (s == future_state::awaited) {
+                        promise_base::m_task_block->m_awake_token.awake();
+                    }
                     promise_base::m_task_block->m_sync_awaiter.release();
                 }
             }
@@ -71,21 +75,31 @@ private:
             }
             return final_awaitable{m_this_coroutine};
         }
+
+    private:
+        bool return_state_valid() const {
+            auto s = m_task_block->m_state.load(morder::relaxed);
+            return s == future_state::non_complete || s == future_state::awaited;
+        }
     };
 
     struct promise_void_mixin : public promise_base {
-        void return_void()
-            pre(promise_base::m_task_block->m_state.load(morder::relaxed) == future_state::non_complete) {
-            promise_base::m_task_block->m_state.store(future_state::complete, morder::acq_rel);
+        void return_void() pre(promise_base::return_state_valid()) {
+            auto s = promise_base::m_task_block->m_state.exchange(future_state::complete, morder::acq_rel);
+            if (s == future_state::awaited) {
+                promise_base::m_task_block->m_awake_token.awake();
+            }
             promise_base::m_task_block->m_sync_awaiter.release();
         }
     };
 
     struct promise_value_mixin : public promise_base {
-        void return_value(try_move_t<T> value)
-            pre(promise_base::m_task_block->m_state.load(morder::acquire) == future_state::non_complete) {
+        void return_value(try_move_t<T> value) pre(promise_base::return_state_valid()) {
             promise_base::m_task_block->m_storage.emplace(try_move(value));
-            promise_base::m_task_block->m_state.store(future_state::complete, morder::release);
+            auto s = promise_base::m_task_block->m_state.exchange(future_state::complete, morder::release);
+            if (s == future_state::awaited) {
+                promise_base::m_task_block->m_awake_token.awake();
+            }
             promise_base::m_task_block->m_sync_awaiter.release();
         }
     };
@@ -132,23 +146,29 @@ public:
         return m_task_block->m_state.load(morder::acquire) == future_state::complete;
     }
 
-    auto await_suspend(std::coroutine_handle<> waiter) pre(!is_empty()) {
-        m_waiter_coroutine = waiter;
-        return m_this_coroutine;
+    void await_suspend(std::coroutine_handle<>) pre(!is_empty()) {
+        tasks::runtime::awake_token awake_token{};
+        m_task_block->m_awake_token = awake_token;
+        if (future_state e{future_state::non_complete}; m_task_block->m_state.compare_exchange_strong(
+                e, future_state::awaited, morder::acq_rel, morder::relaxed)) {
+            awake_token.suspend();
+        }
     }
 
     T await_resume() pre(!is_empty()) {
         if constexpr (concepts::is_void<T>) {
-            m_state = future_state::empty;
             return;
         } else {
-            T res{try_move(*m_storage.get())};
-            m_state = future_state::empty;
+            T res{try_move(*m_task_block->m_storage.get())};
+            m_task_block->m_storage.destroy();
             return res;
         }
     }
 
-    T blocking_await() {}
+    T blocking_await() {
+        m_task_block->m_sync_awaiter.acquire();
+        return await_resume();
+    }
 
 private:
     join_handle(coroutine_handle this_coroutine, std::shared_ptr<task_block> task_block_ptr)
@@ -159,4 +179,4 @@ private:
     std::shared_ptr<task_block> m_task_block;
 };
 
-};  // namespace jungle
+};  // namespace jungle::async

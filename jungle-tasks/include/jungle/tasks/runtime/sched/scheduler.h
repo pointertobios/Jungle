@@ -53,6 +53,7 @@ private:
     std::array<reschedule_slot, reschedule_slots_size> m_reschedule_slots;
     sync::rwspinlock<std::deque<task>, true> m_queue;
     hash_map<task_id, task> m_suspended_tasks;
+    hash_set<task_id> m_preawake;
 
     std::tuple<mpsc<task_id>::sender, mpsc<task_id>::receiver> m_pending_awake{mpsc<task_id>::queue()};
 };

@@ -27,6 +27,7 @@ runtime::runtime()
 
 runtime::runtime(runtime_config config)
         : m_multi_threaded{config.m_multi_thread} {
+    s_this_runtime = this;
     for (usize i : std::views::iota((usize)0, config.m_concurrency)) {
         auto [tx, rx] = mpsc<std::coroutine_handle<>>::queue();
         m_senders.emplace_back(std::move(tx));

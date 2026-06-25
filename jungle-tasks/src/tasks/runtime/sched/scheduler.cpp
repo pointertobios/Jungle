@@ -59,16 +59,22 @@ void scheduler::resched(task t) {
     slot.m_task.emplace(try_move(t));
 }
 
-void scheduler::suspend(task t) { m_suspended_tasks.insert(t.m_id, try_move(t)); }
-
-void awake(task_id id) {
-    auto &[tx, _] = m_pending_awake;
-    tx.send(id);
+void scheduler::suspend(task t) {
+    if (!m_preawake.remove(t.m_id)) {
+        m_suspended_tasks.insert(t.m_id, try_move(t));
+    }
 }
 
-void awake_impl(task_id id) {
+void scheduler::awake(task_id id) {
+    auto &[tx, _] = m_pending_awake;
+    while (!tx.send(try_move(id))) {}
+}
+
+void scheduler::awake_impl(task_id id) {
     if (auto t = m_suspended_tasks.remove(id)) {
         resched(*t);
+    } else {
+        m_preawake.insert(id);
     }
 }
 
