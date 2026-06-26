@@ -23,15 +23,21 @@ class worker final : public jungle::runtime::daemon {
     friend class awake_token;
 
 public:
-    worker(usize wid, task_receiver task_rx)
+    worker(runtime *rt, usize wid, task_receiver &&task_rx, mpsc<usize>::sender &&acceptible_tx)
             : daemon{ustr::format("jg::w{}", wid)}
+            , m_host_runtime{rt}
             , m_wid{wid}
-            , m_task_rx{std::move(task_rx)} {}
-
-    bool operator==(const worker &rhs) const { return m_wid == rhs.m_wid; }
+            , m_task_rx{std::move(task_rx)}
+            , m_acceptible_tx{std::move(acceptible_tx)} {}
 
     static bool exists() { return tls_this_worker; }
     static worker &current() { return *tls_this_worker; }
+
+    bool operator==(const worker &rhs) const { return m_wid == rhs.m_wid; }
+
+    usize id() const { m_wid; }
+
+    runtime &host_runtime() const { return *m_host_runtime; }
 
     sched::scheduler &get_scheduler() { return m_scheduler; }
 
@@ -46,8 +52,10 @@ private:
     bool run_once(std::stop_token &st) override;
     void finalize() override;
 
-    usize m_wid;
+    const runtime *m_host_runtime;
+    const usize m_wid;
     task_receiver m_task_rx;
+    mpsc<usize>::sender m_acceptible_tx;
 
     sched::scheduler m_scheduler;
     /* 当前状态 */

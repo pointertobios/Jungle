@@ -27,11 +27,13 @@ bool worker::initialize() {
     tls_this_worker = this;
 
     os::thread_handle::this_thread().set_affinity(os::cpu_set().with(m_wid));
+    while (!m_acceptible_tx.send(m_wid)) {}
     return true;
 }
 
 bool worker::run_once(std::stop_token &st) {
     wait_for_awake();
+    while (!m_acceptible_tx.send(m_wid)) {}
     bool fetched_new_task = fetch_task();
 
     std::optional<task> t{std::nullopt};

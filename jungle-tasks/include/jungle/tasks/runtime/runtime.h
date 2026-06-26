@@ -8,6 +8,7 @@
 #include <thread>
 
 #include "jungle/async/join_handle.h"
+#include "jungle/container/mpsc.h"
 #include "jungle/preusing.h"
 #include "jungle/tasks/runtime/worker.h"
 
@@ -38,9 +39,6 @@ public:
     explicit runtime();
     ~runtime();
 
-    static bool exsits() { return s_this_runtime; }
-    static runtime &current() { return *s_this_runtime; }
-
     void main_loop() pre(!m_multi_threaded);
 
     void stop() pre(!m_multi_threaded);
@@ -55,7 +53,7 @@ private:
     std::vector<task_sender> m_senders{};
     std::vector<std::unique_ptr<worker>> m_workers{};
 
-    inline static runtime *s_this_runtime;
+    mpsc<usize>::receiver m_acceptible_worker_rx;
 };
 
 };  // namespace jungle::tasks::runtime
