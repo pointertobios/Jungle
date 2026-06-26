@@ -9,14 +9,13 @@
 
 namespace jungle::core::component {
 
-class Transform : public ecs::Component<Transform> {
+class Motion : public ecs::Component<Motion> {
 public:
-    using Storage = ecs::DenseComponentStorage<Transform>;
+    using Storage = ecs::DenseComponentStorage<Motion>;
 
 private:
-    vector3f m_position;
-    vector3f m_rotation;
-    vector3f m_scale;
+    vector3f m_velocity;
+    vector3f m_acceleration;
 };
 
 };  // namespace jungle::core::component
