@@ -12,6 +12,7 @@
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
 #include "jungle/tasks/runtime/worker.h"
+#include "jungle/types/erased.h"
 #include "jungle/types/raw_storage.h"
 
 namespace jungle::async {
@@ -36,7 +37,9 @@ private:
         [[no_unique_address]] raw_storage<T> m_storage{};
         tasks::runtime::awake_token m_awake_token;
 
-        std::binary_semaphore m_sync_awaiter;
+        std::binary_semaphore m_sync_awaiter{0};
+
+        erased m_bound_invocable{};
     };
 
     struct promise_base {
@@ -170,6 +173,8 @@ public:
         return await_resume();
     }
 
+    void bind_invocable(erased &&invocable) { m_task_block->m_bound_invocable = std::move(invocable); }
+
 private:
     join_handle(coroutine_handle this_coroutine, std::shared_ptr<task_block> task_block_ptr)
             : m_this_coroutine{this_coroutine}
@@ -178,5 +183,8 @@ private:
     coroutine_handle m_this_coroutine;
     std::shared_ptr<task_block> m_task_block;
 };
+
+template<typename JoinHandle>
+concept join_handle_type = meta::is_specialization_of_template<^^JoinHandle, ^^join_handle>();
 
 };  // namespace jungle::async

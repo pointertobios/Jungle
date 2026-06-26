@@ -6,8 +6,10 @@
 #include <coroutine>
 #include <utility>
 
+#include "jungle/meta.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
+#include "jungle/types/erased.h"
 #include "jungle/types/raw_storage.h"
 
 namespace jungle::async {
@@ -122,6 +124,8 @@ public:
         }
     }
 
+    void bind_invocable(erased &&invocable) { m_bound_invocable = std::move(invocable); }
+
 private:
     future(promise_type *promise, coroutine_handle this_coroutine)
             : m_promise{promise}
@@ -136,6 +140,11 @@ private:
 
     coroutine_handle m_this_coroutine{};
     std::coroutine_handle<> m_waiter_coroutine{};
+
+    erased m_bound_invocable{};
 };
+
+template<typename Future>
+concept future_type = meta::is_specialization_of_template<^^Future, ^^future>();
 
 };  // namespace jungle::async

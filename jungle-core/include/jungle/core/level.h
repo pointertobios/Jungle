@@ -7,10 +7,10 @@
 #include <vector>
 
 #include "jungle/container/hash_map.h"
+#include "jungle/core/component/motion.h"
+#include "jungle/core/component/transform.h"
 #include "jungle/core/ecs/component.h"
 #include "jungle/core/ecs/manager.h"
-
-#include "jungle/core/component/transform.h"
 
 namespace jungle::core {
 
@@ -51,7 +51,7 @@ public:
     auto &managers() { return m_managers; }
 
 private:
-    Managers<Transform> m_managers;
+    Managers<component::Transform, component::Motion> m_managers;
 };
 
 };  // namespace jungle::core
