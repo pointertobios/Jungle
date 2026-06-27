@@ -52,7 +52,7 @@ private:
     bool run_once(std::stop_token &st) override;
     void finalize() override;
 
-    const runtime *m_host_runtime;
+    runtime *const m_host_runtime;
     const usize m_wid;
     task_receiver m_task_rx;
     mpsc<usize>::sender m_acceptible_tx;
@@ -68,7 +68,8 @@ private:
 
 class awake_token {
 public:
-    awake_token() pre(worker::exists()) = default;
+    awake_token(std::coroutine_handle<> resume_coroutine) pre(worker::exists())
+            : m_resume_coroutine{resume_coroutine} {}
 
     operator bool() const { return m_worker; }
 
@@ -84,6 +85,7 @@ private:
 
     worker *m_worker{&worker::current()};
     task_id m_task{m_worker->m_this_task};
+    std::coroutine_handle<> m_resume_coroutine;
 };
 
 };  // namespace jungle::tasks::runtime

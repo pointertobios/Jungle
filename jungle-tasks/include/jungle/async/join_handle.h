@@ -35,7 +35,7 @@ private:
     struct task_block {
         std::atomic<future_state> m_state;
         [[no_unique_address]] raw_storage<T> m_storage{};
-        tasks::runtime::awake_token m_awake_token;
+        tasks::runtime::awake_token m_awake_token{tasks::runtime::awake_token::none()};
 
         std::binary_semaphore m_sync_awaiter{0};
 
@@ -149,8 +149,8 @@ public:
         return m_task_block->m_state.load(morder::acquire) == future_state::complete;
     }
 
-    void await_suspend(std::coroutine_handle<>) pre(!is_empty()) {
-        tasks::runtime::awake_token awake_token{};
+    void await_suspend(std::coroutine_handle<> waiter_coroutine) pre(!is_empty()) {
+        tasks::runtime::awake_token awake_token{waiter_coroutine};
         m_task_block->m_awake_token = awake_token;
         if (future_state e{future_state::non_complete}; m_task_block->m_state.compare_exchange_strong(
                 e, future_state::awaited, morder::acq_rel, morder::relaxed)) {
@@ -174,6 +174,8 @@ public:
     }
 
     void bind_invocable(erased &&invocable) { m_task_block->m_bound_invocable = std::move(invocable); }
+
+    coroutine_handle get_coroutine_handle() const { return m_this_coroutine; }
 
 private:
     join_handle(coroutine_handle this_coroutine, std::shared_ptr<task_block> task_block_ptr)

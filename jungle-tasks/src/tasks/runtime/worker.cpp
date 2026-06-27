@@ -60,7 +60,7 @@ void worker::finalize() {}
 
 void awake_token::suspend() {
     m_worker->set_suspend_now();
-    m_worker->set_next_resume(m_task);
+    m_worker->set_next_resume(m_resume_coroutine);
 }
 
 void awake_token::awake() {

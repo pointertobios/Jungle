@@ -9,6 +9,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/async/join_handle.h
     ${IPREF}/sync/mpsc.h
     ${IPREF}/sync/rwspinlock.h
+    ${IPREF}/tasks/runtime/blocking_worker.h
     ${IPREF}/tasks/runtime/runtime.h
     ${IPREF}/tasks/runtime/sched/scheduler.h
     ${IPREF}/tasks/runtime/worker.h
@@ -36,4 +37,3 @@ set(JUNGLE_UNIT_TEST_SOURCES
 add_executable(jungle-tasks-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})
 target_link_libraries(jungle-tasks-unit-tests PUBLIC jungle::test jungle::tasks)
 add_test(NAME jungle-tasks-unit-tests COMMAND jungle-tasks-unit-tests)
-

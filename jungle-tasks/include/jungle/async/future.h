@@ -90,7 +90,8 @@ public:
             : m_promise{rhs.m_promise}
             , m_state{rhs.m_state}
             , m_this_coroutine{rhs.m_this_coroutine}
-            , m_waiter_coroutine{rhs.m_waiter_coroutine} {
+            , m_waiter_coroutine{rhs.m_waiter_coroutine}
+            , m_bound_invocable{std::move(rhs.m_bound_invocable)} {
         m_promise->m_future = this;
     }
 

@@ -25,6 +25,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/types/uchar.h
     ${IPREF}/util/murmur.h
     ${IPREF}/util/parse.h
+    ${IPREF}/util/rng.h
     ${IPREF}/util/type_id.h
     ${IPREF}/util/type_mutate.h
 )

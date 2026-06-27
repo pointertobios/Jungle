@@ -1,10 +1,12 @@
 // Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
 // SPDX-License-Identifier: MIT
 
-#include "jungle/tasks/runtime/runtime.h"
-#include "jungle/tasks/runtime/worker.h"
 #include <memory>
 #include <semaphore>
+
+#include "jungle/tasks/runtime/runtime.h"
+#include "jungle/tasks/runtime/worker.h"
+#include "jungle/types/concepts.h"
 
 namespace jungle::tasks::runtime {
 

@@ -3,6 +3,7 @@
 
 #include <print>
 
+#include "jungle/async/future.h"
 #include "jungle/core/ecs/component_storage.h"
 #include "jungle/core/ecs/entity.h"
 #include "jungle/core/level.h"
@@ -68,4 +69,13 @@ int main() {
     using jungle::tasks::runtime::runtime_config;
 
     auto rt = runtime_config{}.multi_threaded().build();
+    rt.block_on([] -> async::future<> {
+        std::println("async function");
+        auto x = co_await tasks::spawn([] -> async::future<int> {
+            std::println("sub task");
+            co_return 42;
+        });
+        std::println("sub task returns {}", x);
+        co_return;
+    });
 }
