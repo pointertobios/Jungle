@@ -41,9 +41,11 @@ class scheduler final {
 public:
     void attach_task(std::coroutine_handle<> root_coroutine);
     std::optional<task> next_task();
-    void resched(task t) pre(t.m_id == m_current_task);
+    void resched(task t);
     void suspend(task t) pre(t.m_id == m_current_task);
     void awake(task_id id);
+
+    bool has_suspended() const;
 
 private:
     void awake_impl(task_id id);

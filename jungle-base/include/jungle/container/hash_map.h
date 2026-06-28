@@ -532,6 +532,8 @@ public:
 
     usize size() const { return m_load; }
 
+    bool is_empty() const { return m_load == 0; }
+
     usize capacity() const { return m_slots.size(); }
 
     void rehash() {

@@ -95,6 +95,9 @@ public:
 private:
     auto task_coroutine(async::future_type auto future_value)
         -> async::join_handle<typename decltype(future_value)::output_type> {
+        if (!m_multi_threaded) {
+            stop();
+        }
         using output_type = typename decltype(future_value)::output_type;
         if constexpr (concepts::is_void<output_type>) {
             co_await future_value;

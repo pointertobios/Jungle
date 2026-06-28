@@ -47,6 +47,7 @@ void scheduler::resched(task t) {
         if (!slot.available) {
             slot.available = true;
             slot.m_task.emplace(try_move(t));
+            return;
         }
     }
     m_queue.read()->push_front(try_move(*m_reschedule_slots[0].m_task.get()));
@@ -69,6 +70,8 @@ void scheduler::awake(task_id id) {
     auto &[tx, _] = m_pending_awake;
     while (!tx.send(try_move(id))) {}
 }
+
+bool scheduler::has_suspended() const { return !m_suspended_tasks.is_empty(); }
 
 void scheduler::awake_impl(task_id id) {
     if (auto t = m_suspended_tasks.remove(id)) {

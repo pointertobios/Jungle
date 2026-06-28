@@ -46,14 +46,14 @@ bool worker::run_once(std::stop_token &st) {
             t->m_resume_handle = m_next_resume;
             if (m_suspend_now) {
                 m_scheduler.suspend(*t);
-                m_suspend_now = false;
             } else {
                 m_scheduler.resched(*t);
             }
         }
+        m_suspend_now = false;
     }
 
-    return t || fetched_new_task || !st.stop_requested();
+    return t || fetched_new_task || m_scheduler.has_suspended() || !st.stop_requested();
 }
 
 void worker::finalize() {}

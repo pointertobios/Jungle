@@ -4,6 +4,7 @@
 #include <print>
 
 #include "jungle/async/future.h"
+#include "jungle/async/invoke.h"
 #include "jungle/core/ecs/component_storage.h"
 #include "jungle/core/ecs/entity.h"
 #include "jungle/core/level.h"
@@ -54,6 +55,18 @@ private:
 
 using namespace literals;
 
+async::future<> async_test() {
+    std::println("async function");
+    auto x = co_await tasks::spawn([] -> async::future<int> {
+        std::println("sub task");
+        co_return 42;
+    });
+    std::println("sub task returns {}", x);
+    auto f = co_await async::co_invoke([] -> async::future<float> { co_return 0.5; });
+    std::println("{}", f);
+    co_return;
+}
+
 int main() {
     using core::ecs::Entity;
     Entity entity{0x123456789abcdef0};
@@ -67,15 +80,14 @@ int main() {
     core::Level level;
 
     using jungle::tasks::runtime::runtime_config;
+    {
+        auto rt = runtime_config{}.multi_threaded().build();
+        rt.block_on(async_test);
+    }
 
-    auto rt = runtime_config{}.multi_threaded().build();
-    rt.block_on([] -> async::future<> {
-        std::println("async function");
-        auto x = co_await tasks::spawn([] -> async::future<int> {
-            std::println("sub task");
-            co_return 42;
-        });
-        std::println("sub task returns {}", x);
-        co_return;
-    });
+    {
+        auto rt = runtime_config{}.single_threaded().build();
+        rt.spawn(async_test);
+        rt.main_loop();
+    }
 }
