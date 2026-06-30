@@ -4,6 +4,7 @@
 #include <print>
 
 #include "jungle/async/future.h"
+#include "jungle/test/async_test.h"
 #include "jungle/test/test.h"
 
 using namespace jungle;
@@ -15,4 +16,7 @@ async::future<int> async_func_int() {
     co_return 1;
 }
 
-JUNGLE_SYNC_TEST(future_type_correctness) { JUNGLE_SYNC_SUCCESS(); }
+JUNGLE_ASYNC_TEST(future_type_correctness) {
+    co_await async_func_int();
+    JUNGLE_ASYNC_SUCCESS();
+}

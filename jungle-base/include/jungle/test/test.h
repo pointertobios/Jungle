@@ -16,7 +16,7 @@ namespace jungle::test {
 
 using test_result = std::expected<void, ustr>;
 
-using test_func = std::function<test_result()>;
+using test_func = test_result (*)();
 
 bool add_sync_test(
     std::string_view name, test_func func, std::source_location location = std::source_location::current());
@@ -29,15 +29,14 @@ bool add_async_test(
     static bool _added_test_##name = jungle::test::add_sync_test(#name, test_##name); \
     jungle::test::test_result test_##name()
 
-#define JUNGLE_SYNC_ASSERT(expr, ...)                                                                    \
-    do {                                                                                                 \
-        if (!(expr)) {                                                                                   \
-            auto location = std::source_location::current();                                             \
-            return std::unexpected(                                                                      \
-                jungle::ustr::format(                                                                    \
-                    "  at {}:{}\n{} evaluated false:  {}", location.file_name(), location.line(), #expr, \
-                    jungle::ustr::format(__VA_ARGS__)));                                                 \
-        }                                                                                                \
+#define JUNGLE_SYNC_ASSERT(expr, ...)                                                                \
+    do {                                                                                             \
+        if (!(expr)) {                                                                               \
+            auto location = std::source_location::current();                                         \
+            return std::unexpected{jungle::ustr::format(                                             \
+                "  at {}:{}\n{} evaluated false:  {}", location.file_name(), location.line(), #expr, \
+                jungle::ustr::format(__VA_ARGS__))};                                                 \
+        }                                                                                            \
     } while (0)
 
 #define JUNGLE_SYNC_SUCCESS() \
