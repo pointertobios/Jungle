@@ -19,6 +19,8 @@ bool worker::fetch_task() {
     return c != 0;
 }
 
+std::coroutine_handle<> worker::current_coroutine() const { return m_next_resume; }
+
 void worker::set_next_resume(std::coroutine_handle<> coroutine) { m_next_resume = coroutine; }
 
 void worker::set_suspend_now() { m_suspend_now = true; }
@@ -40,6 +42,7 @@ bool worker::run_once(std::stop_token &st) {
     while ((t = m_scheduler.next_task())) {
         m_this_task = t->m_id;
         while (!m_suspend_now) {
+            m_next_resume = t->m_resume_handle;
             t->m_resume_handle.resume();
         }
         if (m_next_resume) {

@@ -13,6 +13,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/tasks/runtime/runtime.h
     ${IPREF}/tasks/runtime/sched/scheduler.h
     ${IPREF}/tasks/runtime/worker.h
+    ${IPREF}/tasks/this_task.h
     ${IPREF}/test/async_test.h
 )
 
@@ -20,6 +21,7 @@ set(JUNGLE_SOURCES
     src/tasks/runtime/runtime.cpp
     src/tasks/runtime/sched/scheduler.cpp
     src/tasks/runtime/worker.cpp
+    src/tasks/this_task.cpp
     src/test/async_test.cpp
 )
 

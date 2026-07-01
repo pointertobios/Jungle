@@ -143,7 +143,7 @@ public:
         return *this;
     }
 
-    bool is_empty() const { return m_this_coroutine; }
+    bool is_empty() const { return static_cast<bool>(m_this_coroutine); }
 
     bool await_ready() pre(!is_empty()) {
         return m_task_block->m_state.load(morder::acquire) == future_state::complete;

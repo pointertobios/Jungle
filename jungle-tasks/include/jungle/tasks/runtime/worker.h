@@ -43,7 +43,7 @@ public:
 
     bool fetch_task();
 
-    task_id this_task() const;
+    std::coroutine_handle<> current_coroutine() const;
     void set_next_resume(std::coroutine_handle<> coroutine);
     void set_suspend_now();
 
