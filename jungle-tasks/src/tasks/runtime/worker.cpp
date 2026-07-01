@@ -25,6 +25,8 @@ void worker::set_next_resume(std::coroutine_handle<> coroutine) { m_next_resume 
 
 void worker::set_suspend_now() { m_suspend_now = true; }
 
+void worker::set_yield_now() { m_yield_now = true; }
+
 bool worker::initialize() {
     tls_this_worker = this;
 
@@ -41,7 +43,7 @@ bool worker::run_once(std::stop_token &st) {
     std::optional<task> t{std::nullopt};
     while ((t = m_scheduler.next_task())) {
         m_this_task = t->m_id;
-        while (!m_suspend_now) {
+        while (!m_suspend_now && !m_yield_now) {
             m_next_resume = t->m_resume_handle;
             t->m_resume_handle.resume();
         }
@@ -54,6 +56,7 @@ bool worker::run_once(std::stop_token &st) {
             }
         }
         m_suspend_now = false;
+        m_yield_now = false;
     }
 
     return t || fetched_new_task || m_scheduler.has_suspended() || !st.stop_requested();

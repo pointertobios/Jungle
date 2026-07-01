@@ -9,4 +9,6 @@ namespace jungle::tasks::this_task {
 
 std::coroutine_handle<> current_coroutine();
 
-};
+std::suspend_always yield();
+
+};  // namespace jungle::tasks::this_task

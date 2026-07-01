@@ -46,6 +46,7 @@ public:
     std::coroutine_handle<> current_coroutine() const;
     void set_next_resume(std::coroutine_handle<> coroutine);
     void set_suspend_now();
+    void set_yield_now();
 
 private:
     bool initialize() override;
@@ -59,9 +60,10 @@ private:
 
     sched::scheduler m_scheduler;
     /* 当前状态 */
-    task_id m_this_task;
-    std::coroutine_handle<> m_next_resume;
-    bool m_suspend_now;
+    task_id m_this_task{};
+    std::coroutine_handle<> m_next_resume{};
+    bool m_suspend_now{false};
+    bool m_yield_now{false};
 
     inline thread_local static worker *tls_this_worker{nullptr};
 };
