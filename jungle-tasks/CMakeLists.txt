@@ -31,7 +31,7 @@ target_include_directories(jungle-tasks PUBLIC include)
 target_precompile_headers(jungle-tasks PUBLIC ${JUNGLE_HEADERS})
 add_library(jungle::tasks ALIAS jungle-tasks)
 
-add_library(jungle-test-async src/test/async_test.cpp)
+add_library(jungle-test-async OBJECT src/test/async_test.cpp)
 target_precompile_headers(jungle-test-async PUBLIC include/jungle/test/async_test.h)
 target_link_libraries(jungle-test-async PUBLIC jungle::tasks jungle::test)
 add_library(jungle::test-async ALIAS jungle-test-async)

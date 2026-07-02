@@ -12,6 +12,8 @@ namespace jungle::tasks::runtime {
 
 runtime runtime_config::build() && { return runtime{*this}; }
 
+std::unique_ptr<runtime> runtime_config::build_ptr() && { return std::make_unique<runtime>(*this); }
+
 runtime_config runtime_config::single_threaded() && {
     m_multi_thread = false;
     m_concurrency = 1;

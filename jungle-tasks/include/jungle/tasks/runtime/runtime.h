@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <memory>
 #include <random>
 #include <semaphore>
 #include <stop_token>
@@ -28,6 +29,7 @@ public:
     runtime_config() = default;
 
     runtime build() &&;
+    std::unique_ptr<runtime> build_ptr() &&;
 
     runtime_config single_threaded() &&;
     runtime_config multi_threaded(usize n = std::thread::hardware_concurrency()) &&;
@@ -42,6 +44,7 @@ class runtime final {
 
 public:
     explicit runtime();
+    explicit runtime(runtime_config config);
     ~runtime();
 
     template<typename... Args>
@@ -106,8 +109,6 @@ private:
             co_return co_await future_value;
         }
     }
-
-    explicit runtime(runtime_config config);
 
     const bool m_multi_threaded;
 

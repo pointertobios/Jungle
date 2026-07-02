@@ -80,7 +80,7 @@ int main() {
         }
     }
     if (auto &ctx = test::get_async_test_context()) {
-        ctx->async_test_collect(std::move(artwrap));
+        fail_count += ctx->async_test_collect(std::move(artwrap));
     }
     return -fail_count;
 }
