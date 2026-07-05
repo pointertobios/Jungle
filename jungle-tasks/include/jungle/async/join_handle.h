@@ -150,11 +150,11 @@ public:
     }
 
     void await_suspend(std::coroutine_handle<> waiter_coroutine) pre(!is_empty()) {
-        tasks::runtime::awake_token awake_token{waiter_coroutine};
+        tasks::runtime::awake_token awake_token{};
         m_task_block->m_awake_token = awake_token;
         if (future_state e{future_state::non_complete}; m_task_block->m_state.compare_exchange_strong(
                 e, future_state::awaited, morder::acq_rel, morder::relaxed)) {
-            awake_token.suspend();
+            awake_token.suspend(waiter_coroutine);
         }
     }
 

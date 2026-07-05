@@ -13,10 +13,10 @@ namespace jungle::test {
 using async_test_func = async::future<test_result> (*)();
 
 #define JUNGLE_ASYNC_TEST(name)                                                     \
-    jungle::async::future<jungle::test::test_result> test_##name();                 \
+    static jungle::async::future<jungle::test::test_result> test_##name();          \
     static bool _added_test_##name =                                                \
         jungle::test::add_async_test(#name, reinterpret_cast<void *>(test_##name)); \
-    jungle::async::future<jungle::test::test_result> test_##name()
+    static jungle::async::future<jungle::test::test_result> test_##name()
 
 #define JUNGLE_ASYNC_ASSERT(expr, ...)                                                               \
     do {                                                                                             \

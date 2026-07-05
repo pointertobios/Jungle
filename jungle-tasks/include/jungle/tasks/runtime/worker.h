@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <coroutine>
 #include <limits>
 #include <semaphore>
@@ -43,7 +44,6 @@ public:
 
     bool fetch_task();
 
-    std::coroutine_handle<> current_coroutine() const;
     void set_next_resume(std::coroutine_handle<> coroutine);
     void set_suspend_now();
     void set_yield_now();
@@ -70,15 +70,31 @@ private:
 
 class awake_token {
 public:
-    awake_token(std::coroutine_handle<> resume_coroutine) pre(worker::exists())
-            : m_resume_coroutine{resume_coroutine} {}
+    awake_token() pre(worker::exists()) = default;
 
-    operator bool() const { return m_worker; }
+    ~awake_token() = default;
+
+    awake_token(const awake_token &) = default;
+    awake_token &operator=(const awake_token &) = default;
+
+    awake_token(awake_token &&) = default;
+    awake_token &operator=(awake_token &&) = default;
 
     static awake_token none() { return awake_token{nullptr, task_id{}}; }
 
-    void suspend() pre(*m_worker == worker::current());
-    void awake();
+    operator bool() const { return m_worker; }
+
+    bool operator==(const awake_token &rhs) const { return m_worker == rhs.m_worker && m_task == rhs.m_task; }
+
+    void suspend(std::coroutine_handle<> resume_coroutine) pre(*m_worker == worker::current()) {
+        m_worker->set_suspend_now();
+        m_worker->set_next_resume(resume_coroutine);
+    }
+
+    void awake() {
+        m_worker->get_scheduler().awake(m_task);
+        m_worker->awake();
+    }
 
 private:
     awake_token(worker *w, task_id t)
@@ -87,7 +103,6 @@ private:
 
     worker *m_worker{&worker::current()};
     task_id m_task{m_worker->m_this_task};
-    std::coroutine_handle<> m_resume_coroutine;
 };
 
 };  // namespace jungle::tasks::runtime

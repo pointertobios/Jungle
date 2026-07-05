@@ -28,4 +28,7 @@ concept non_void = !std::is_void_v<T>;
 template<typename T>
 concept is_enum = std::is_enum_v<T>;
 
+template<typename Fn, typename Ret, typename... Args>
+concept verified_invocable = std::is_invocable_r_v<Ret, Fn, Args...>;
+
 };  // namespace jungle::concepts

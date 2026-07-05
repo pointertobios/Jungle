@@ -20,6 +20,51 @@ class rwspinlock {
     };
 
 public:
+    class write_guard final {
+        friend class rwspinlock;
+
+    public:
+        write_guard() = default;
+
+        ~write_guard() {
+            if (!m_rwspinlock) {
+                return;
+            }
+
+            auto &s = m_rwspinlock->m_state;
+            while (true) {
+                state e{0, true, true};
+                if (s.compare_exchange_weak(e, state{0, false, false}, morder::acq_rel, morder::relaxed)) {
+                    break;
+                }
+            }
+        }
+
+        write_guard(const write_guard &) = delete;
+        write_guard &operator=(const write_guard &) = delete;
+
+        write_guard(write_guard &&rhs)
+                : m_rwspinlock{std::move(rhs.m_rwspinlock)} {
+            rhs.m_rwspinlock = nullptr;
+        }
+
+        write_guard &operator=(write_guard &&rhs) {
+            if (this != &rhs) {
+                this->~write_guard();
+                new (this) write_guard{std::move(rhs)};
+            }
+            return *this;
+        }
+
+        operator bool() const { return m_rwspinlock != nullptr; }
+
+    private:
+        write_guard(rwspinlock *p)
+                : m_rwspinlock{p} {}
+
+        rwspinlock *m_rwspinlock{nullptr};
+    };
+
     class read_guard final {
         friend class rwspinlock;
 
@@ -62,53 +107,29 @@ public:
 
         operator bool() const { return m_rwspinlock != nullptr; }
 
-    private:
-        read_guard(rwspinlock *p)
-                : m_rwspinlock{p} {}
-
-        rwspinlock *m_rwspinlock{nullptr};
-    };
-
-    class write_guard final {
-        friend class rwspinlock;
-
-    public:
-        write_guard() = default;
-
-        ~write_guard() {
+        write_guard upgrade() {
             if (!m_rwspinlock) {
-                return;
+                return write_guard{};
             }
 
             auto &s = m_rwspinlock->m_state;
             while (true) {
-                state e{0, true, true};
-                if (s.compare_exchange_weak(e, state{0, false, false}, morder::acq_rel, morder::relaxed)) {
+                state e = s.load(morder::acquire);
+                if (e.m_write_willing || e.m_writing) {
+                    return write_guard{};
+                }
+                e.m_reader = 1;
+                if (s.compare_exchange_weak(e, state{1, true, false}, morder::acq_rel, morder::relaxed)) {
                     break;
                 }
             }
+            s.store(state{0, true, true}, morder::acq_rel);
+            m_rwspinlock = nullptr;
+            return write_guard{m_rwspinlock};
         }
-
-        write_guard(const write_guard &) = delete;
-        write_guard &operator=(const write_guard &) = delete;
-
-        write_guard(write_guard &&rhs)
-                : m_rwspinlock{std::move(rhs.m_rwspinlock)} {
-            rhs.m_rwspinlock = nullptr;
-        }
-
-        write_guard &operator=(write_guard &&rhs) {
-            if (this != &rhs) {
-                this->~write_guard();
-                new (this) write_guard{std::move(rhs)};
-            }
-            return *this;
-        }
-
-        operator bool() const { return m_rwspinlock != nullptr; }
 
     private:
-        write_guard(rwspinlock *p)
+        read_guard(rwspinlock *p)
                 : m_rwspinlock{p} {}
 
         rwspinlock *m_rwspinlock{nullptr};
@@ -275,7 +296,7 @@ public:
 
     rwspinlock()
         requires(std::is_default_constructible_v<T>)
-    = default;
+            : m_value{} {}
 
     template<typename... Args>
     rwspinlock(Args &&...args)

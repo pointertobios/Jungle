@@ -25,9 +25,9 @@ bool add_async_test(
     std::string_view name, void *func, std::source_location location = std::source_location::current());
 
 #define JUNGLE_SYNC_TEST(name)                                                        \
-    jungle::test::test_result test_##name();                                          \
+    static jungle::test::test_result test_##name();                                   \
     static bool _added_test_##name = jungle::test::add_sync_test(#name, test_##name); \
-    jungle::test::test_result test_##name()
+    static jungle::test::test_result test_##name()
 
 #define JUNGLE_SYNC_ASSERT(expr, ...)                                                                \
     do {                                                                                             \
