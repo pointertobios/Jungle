@@ -3,11 +3,14 @@
 
 #include <print>
 #include <string>
-#include <thread>
 
 #include "jungle/sync/rwspinlock.h"
+#include "jungle/tasks/runtime/runtime.h"
+#include "jungle/tasks/this_task.h"
+#include "jungle/test/async_test.h"
 #include "jungle/test/test.h"
 
+using namespace jungle;
 using namespace jungle::sync;
 
 JUNGLE_SYNC_TEST(void_try_read_succeeds_when_uncontested) {
@@ -174,74 +177,85 @@ JUNGLE_SYNC_TEST(void_write_succeeds_when_uncontested) {
     JUNGLE_SYNC_SUCCESS();
 }
 
-JUNGLE_SYNC_TEST(void_read_blocks_until_write_released) {
+JUNGLE_ASYNC_TEST(void_read_blocks_until_write_released) {
     rwspinlock<> lock;
 
     auto wg = lock.write();
-    JUNGLE_SYNC_ASSERT(wg, "主线程应先获取写锁");
+    JUNGLE_ASYNC_ASSERT(wg, "主协程应先获取写锁");
 
     bool read_acquired{false};
-    std::jthread reader{[&lock, &read_acquired]() {
+    auto jh = tasks::spawn([&]() -> async::future<> {
         auto rg = lock.read();
         read_acquired = true;
-    }};
+        co_return;
+    });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    JUNGLE_SYNC_ASSERT(!read_acquired, "写锁持有时 reader 应阻塞");
+    co_await this_task::yield();
+    JUNGLE_ASYNC_ASSERT(!read_acquired, "写锁持有时 reader 应阻塞");
 
     wg = {};
-    JUNGLE_SYNC_ASSERT(!wg, "写锁应已释放");
+    JUNGLE_ASYNC_ASSERT(!wg, "写锁应已释放");
 
-    reader.join();
-    JUNGLE_SYNC_ASSERT(read_acquired, "写锁释放后 reader 应成功获取读锁");
-    JUNGLE_SYNC_SUCCESS();
+    co_await jh;
+    JUNGLE_ASYNC_ASSERT(read_acquired, "写锁释放后 reader 应成功获取读锁");
+
+    JUNGLE_ASYNC_SUCCESS();
 }
 
-JUNGLE_SYNC_TEST(void_write_blocks_until_read_released) {
+JUNGLE_ASYNC_TEST(void_write_blocks_until_read_released) {
     rwspinlock<> lock;
 
     auto rg = lock.read();
-    JUNGLE_SYNC_ASSERT(rg, "主线程应先获取读锁");
+    JUNGLE_ASYNC_ASSERT(rg, "主协程应先获取读锁");
 
     bool write_acquired{false};
-    std::jthread writer{[&lock, &write_acquired]() {
+    auto jh = tasks::spawn([&]() -> async::future<> {
         auto wg = lock.write();
         write_acquired = true;
-    }};
+        co_return;
+    });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    JUNGLE_SYNC_ASSERT(!write_acquired, "读锁持有时 writer 应阻塞");
+    co_await this_task::yield();
+    JUNGLE_ASYNC_ASSERT(!write_acquired, "读锁持有时 writer 应阻塞");
 
     rg = {};
-    JUNGLE_SYNC_ASSERT(!rg, "读锁应已释放");
+    JUNGLE_ASYNC_ASSERT(!rg, "读锁应已释放");
 
-    writer.join();
-    JUNGLE_SYNC_ASSERT(write_acquired, "读锁释放后 writer 应成功获取写锁");
-    JUNGLE_SYNC_SUCCESS();
+    co_await jh;
+    JUNGLE_ASYNC_ASSERT(write_acquired, "读锁释放后 writer 应成功获取写锁");
+
+    JUNGLE_ASYNC_SUCCESS();
 }
 
-JUNGLE_SYNC_TEST(void_write_willing_blocks_new_readers) {
+JUNGLE_ASYNC_TEST(void_write_willing_blocks_new_readers) {
     rwspinlock<> lock;
 
     auto rg = lock.read();
-    JUNGLE_SYNC_ASSERT(rg, "主线程应先获取读锁");
+    JUNGLE_ASYNC_ASSERT(rg, "主协程应先获取读锁");
 
     bool write_acquired{false};
-
-    std::jthread writer{[&lock, &write_acquired]() {
+    auto jh = tasks::spawn([&]() -> async::future<> {
         auto wg = lock.write();
         write_acquired = true;
-    }};
+        co_return;
+    });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    while (true) {
+        co_await this_task::yield();
+        auto probe = lock.try_read();
+        if (!probe) {
+            break;
+        }
+    }
 
     auto rg2 = lock.try_read();
-    JUNGLE_SYNC_ASSERT(!rg2, "write_willing 时新的 try_read 应失败");
+    JUNGLE_ASYNC_ASSERT(!rg2, "write_willing 时新的 try_read 应失败");
 
     rg = {};
-    writer.join();
-    JUNGLE_SYNC_ASSERT(write_acquired, "所有读锁释放后 writer 应成功获取写锁");
-    JUNGLE_SYNC_SUCCESS();
+    co_await jh;
+    JUNGLE_ASYNC_ASSERT(write_acquired, "所有读锁释放后 writer 应成功获取写锁");
+
+    JUNGLE_ASYNC_SUCCESS();
 }
 
 JUNGLE_SYNC_TEST(t_read_guard_const_access) {
