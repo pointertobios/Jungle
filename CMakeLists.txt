@@ -23,12 +23,12 @@ enable_testing()
 
 # Jungle config
 
-add_subdirectory(jungle-api)
 add_subdirectory(jungle-base)
-add_subdirectory(jungle-client)
-add_subdirectory(jungle-core)
-add_subdirectory(jungle-server)
 add_subdirectory(jungle-tasks)
+add_subdirectory(jungle-core)
+add_subdirectory(jungle-api)
+add_subdirectory(jungle-client)
+add_subdirectory(jungle-server)
 add_subdirectory(jungle-ui)
 
 add_subdirectory(tests)

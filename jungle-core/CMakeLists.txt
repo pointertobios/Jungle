@@ -22,7 +22,7 @@ set(JUNGLE_SOURCES
 )
 
 add_library(jungle-core ${JUNGLE_SOURCES})
-target_link_libraries(jungle-core jungle::base)
+target_link_libraries(jungle-core jungle::base jungle::tasks)
 target_include_directories(jungle-core PUBLIC include)
 target_precompile_headers(jungle-core PUBLIC ${JUNGLE_HEADERS})
 add_library(jungle::core ALIAS jungle-core)
