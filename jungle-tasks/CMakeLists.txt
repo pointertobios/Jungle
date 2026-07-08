@@ -7,6 +7,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/async/future.h
     ${IPREF}/async/invoke.h
     ${IPREF}/async/join_handle.h
+    ${IPREF}/sync/condition_variable.h
     ${IPREF}/sync/mpsc.h
     ${IPREF}/sync/rwspinlock.h
     ${IPREF}/sync/spinlock.h
@@ -19,6 +20,7 @@ set(JUNGLE_HEADERS
 )
 
 set(JUNGLE_SOURCES
+    src/sync/condition_variable.cpp
     src/tasks/runtime/runtime.cpp
     src/tasks/runtime/sched/scheduler.cpp
     src/tasks/runtime/worker.cpp
@@ -40,6 +42,7 @@ add_library(jungle::test-async ALIAS jungle-test-async)
 # Unit Tests
 
 set(JUNGLE_UNIT_TEST_SOURCES
+    unit_tests/condition_variable.cpp
     unit_tests/future.cpp
     unit_tests/rwspinlock.cpp
     unit_tests/spinlock.cpp
