@@ -69,7 +69,7 @@ set(JUNGLE_OPTIONS
     -fno-exceptions
     -fconcepts-diagnostics-depth=6
     $<$<CONFIG:Debug>:-fcontract-evaluation-semantic=enforce>
-    $<$<CONFIG:Release>:-fcontract-evaluation-semantic=quick-enforce>
+    $<$<CONFIG:Release>:-fcontract-evaluation-semantic=quick_enforce>
 )
 
 add_library(jungle-base ${JUNGLE_SOURCES})

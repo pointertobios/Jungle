@@ -282,6 +282,7 @@ public:
             }
             if (*m_index == m_map->m_slots.size()) {
                 m_index = std::nullopt;
+                return;
             }
             while (*m_index < m_map->m_slots.size()
                    && m_map->m_slots.at(*m_index).st != slot::state::filled) {
@@ -462,6 +463,7 @@ public:
             }
             if (*m_index == m_map->m_slots.size()) {
                 m_index = std::nullopt;
+                return;
             }
             while (*m_index < m_map->m_slots.size()
                    && m_map->m_slots.at(*m_index).st != slot::state::filled) {
