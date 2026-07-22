@@ -50,6 +50,8 @@ public:
         return *this;
     }
 
+    operator bool() const { return m_storage; }
+
     template<typename T>
     T &get() {
         return *reinterpret_cast<T *>(m_storage);
