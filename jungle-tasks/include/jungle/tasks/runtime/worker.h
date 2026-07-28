@@ -8,17 +8,25 @@
 #include <limits>
 #include <semaphore>
 
+#include "jungle/async/control.h"
 #include "jungle/container/mpsc.h"
 #include "jungle/runtime/daemon.h"
 #include "jungle/tasks/runtime/sched/scheduler.h"
+#include "jungle/types/erased.h"
 #include "jungle/types/int.h"
 
 namespace jungle::tasks::runtime {
 
-using task_sender = mpsc<std::coroutine_handle<>>::sender;
-using task_receiver = mpsc<std::coroutine_handle<>>::receiver;
-
 class runtime;
+struct task_block_base;
+
+struct task_item {
+    std::coroutine_handle<> m_root_coroutine;
+    task_block_base *m_task_block;
+};
+
+using task_sender = mpsc<task_item>::sender;
+using task_receiver = mpsc<task_item>::receiver;
 
 class worker final : public jungle::runtime::daemon {
     friend class awake_token;
@@ -103,6 +111,16 @@ private:
 
     worker *m_worker{&worker::current()};
     task_id m_task{m_worker->m_this_task};
+};
+
+struct task_block_base {
+    std::atomic<async::control::future_state> m_state;
+    tasks::runtime::awake_token m_awake_token{tasks::runtime::awake_token::none()};
+
+    std::binary_semaphore m_sync_awaiter{0};
+    std::vector<task_block_base *> m_sub_tasks{};
+
+    erased m_bound_invocable{};
 };
 
 };  // namespace jungle::tasks::runtime

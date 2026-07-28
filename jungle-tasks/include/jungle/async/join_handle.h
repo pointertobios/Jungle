@@ -9,10 +9,10 @@
 #include <semaphore>
 #include <utility>
 
+#include "jungle/async/control.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
 #include "jungle/tasks/runtime/worker.h"
-#include "jungle/types/erased.h"
 #include "jungle/types/raw_storage.h"
 
 namespace jungle::async {
@@ -25,21 +25,15 @@ public:
     struct promise_type;
     using coroutine_handle = std::coroutine_handle<promise_type>;
 
+    using future_state = control::future_state;
+    using task_block_base = tasks::runtime::task_block_base;
+
 private:
-    enum future_state {
-        non_complete,
-        awaited,
-        complete,
-    };
-
-    struct task_block {
-        std::atomic<future_state> m_state;
+    struct task_block : public task_block_base {
         [[no_unique_address]] raw_storage<T> m_storage{};
-        tasks::runtime::awake_token m_awake_token{tasks::runtime::awake_token::none()};
 
-        std::binary_semaphore m_sync_awaiter{0};
-
-        erased m_bound_invocable{};
+        task_block(future_state state)
+                : task_block_base{state} {}
     };
 
     struct promise_base {
@@ -175,7 +169,7 @@ public:
 
     void bind_invocable(erased &&invocable) { m_task_block->m_bound_invocable = std::move(invocable); }
 
-    coroutine_handle get_coroutine_handle() const { return m_this_coroutine; }
+    tasks::runtime::task_item get_task_item() const { return {m_this_coroutine, &*m_task_block}; }
 
 private:
     join_handle(coroutine_handle this_coroutine, std::shared_ptr<task_block> task_block_ptr)

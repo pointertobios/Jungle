@@ -57,21 +57,7 @@ public:
             task_coroutine(async::co_invoke(std::forward<decltype(fn)>(fn), std::forward<Args>(args)...));
         std::uniform_int_distribution<usize> w{0, m_workers.size() - 1};
         usize x = w(rng());
-        m_senders[x].send(jh.get_coroutine_handle());
-        m_workers[x]->awake();
-        return jh;
-    }
-
-    template<typename... Args>
-    auto spawn_local(async::async_function<Args...> auto &&fn, Args &&...args)
-        requires requires {
-            { fn(args...) } -> async::future_type;
-        }
-    pre(worker::exists()) {
-        auto jh =
-            task_coroutine(async::co_invoke(std::forward<decltype(fn)>(fn), std::forward<Args>(args)...));
-        usize x = worker::current().id();
-        m_senders[x].send(jh.get_coroutine_handle());
+        m_senders[x].send(jh.get_task_item());
         m_workers[x]->awake();
         return jh;
     }

@@ -4,6 +4,7 @@
 set(IPREF "include/jungle") # Include prefix for headers
 
 set(JUNGLE_HEADERS
+    ${IPREF}/async/control.h
     ${IPREF}/async/future.h
     ${IPREF}/async/invoke.h
     ${IPREF}/async/join_handle.h

@@ -10,10 +10,10 @@
 namespace jungle::tasks::runtime {
 
 bool worker::fetch_task() {
-    std::optional<std::coroutine_handle<>> coroutine;
+    std::optional<task_item> task;
     usize c = 0;
-    while ((coroutine = m_task_rx.recv())) {
-        m_scheduler.attach_task(*coroutine);
+    while ((task = m_task_rx.recv())) {
+        m_scheduler.attach_task(task->m_root_coroutine);
         c++;
     }
     return c != 0;

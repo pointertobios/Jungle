@@ -6,6 +6,7 @@
 #include <coroutine>
 #include <utility>
 
+#include "jungle/async/control.h"
 #include "jungle/meta.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
@@ -22,13 +23,9 @@ public:
     struct promise_type;
     using coroutine_handle = std::coroutine_handle<promise_type>;
 
-private:
-    enum future_state {
-        empty,
-        non_complete,
-        complete,
-    };
+    using future_state = control::future_state;
 
+private:
     struct promise_base {
         friend class future;
 
