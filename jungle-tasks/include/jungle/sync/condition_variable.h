@@ -78,7 +78,7 @@ public:
     condition_variable(condition_variable &&) = delete;
     condition_variable &operator=(condition_variable &&) = delete;
 
-    wait_awaitable<> operator()();
+    wait_awaitable<> operator()() { return wait_awaitable{*this}; }
 
     async::future<> operator()(concepts::verified_invocable<bool> auto pred) {
         while (true) {

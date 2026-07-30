@@ -17,8 +17,6 @@ condition_variable::~condition_variable() {
     guard->remove(this);
 }
 
-condition_variable::wait_awaitable<> condition_variable::operator()() { return wait_awaitable{*this}; }
-
 bool condition_variable::notify_one() {
     std::vector<awake_token> av;
     {
