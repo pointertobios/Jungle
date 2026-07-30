@@ -66,7 +66,7 @@ private:
             , m_result{external} {}
 
     std::optional<ustr> m_storage{ustr{}};
-    ustr &m_result{*m_storage};
+    ustr &m_result{m_storage.value()};
 };
 
 static_assert(SerializeTargetImpl<TextTarget>);

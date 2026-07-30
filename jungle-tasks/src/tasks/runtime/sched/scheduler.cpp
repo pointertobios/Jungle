@@ -15,8 +15,8 @@ std::optional<task> scheduler::next_task() {
     auto &[_, rx] = m_pending_awake;
     {
         std::optional<task_id> t;
-        while ((t = rx.recv())) {
-            awake_impl(*t);
+        while ((t = rx.recv()).has_value()) {
+            awake_impl(t.value());
         }
     }
 

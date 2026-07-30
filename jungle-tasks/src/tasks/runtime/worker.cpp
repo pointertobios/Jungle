@@ -12,8 +12,8 @@ namespace jungle::tasks::runtime {
 bool worker::fetch_task() {
     std::optional<task_item> task;
     usize c = 0;
-    while ((task = m_task_rx.recv())) {
-        m_scheduler.attach_task(task->m_root_coroutine);
+    while ((task = m_task_rx.recv()).has_value()) {
+        m_scheduler.attach_task(task.value().m_root_coroutine);
         c++;
     }
     return c != 0;

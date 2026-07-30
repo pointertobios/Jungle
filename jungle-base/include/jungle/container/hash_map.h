@@ -158,7 +158,7 @@ public:
             if (m_cache_valid) {
                 m_cache.destroy();
             }
-            auto &sl = m_map->m_slots.at(*m_index);
+            auto &sl = m_map->m_slots.at(m_index.value());
             if constexpr (std::is_void_v<V>) {
                 m_cache.emplace(sl.key);
             } else {
@@ -172,7 +172,7 @@ public:
             if (!(validative_check() && end_check())) {
                 panic("assertion failed: validative_check() && end_check()");
             }  // TODO: workaround gcc contract bug for template function
-            *m_index += 1;
+            m_index.value() += 1;
             m_counter += 1;
 
             m_cache_valid = false;
@@ -277,18 +277,18 @@ public:
         }
 
         void next_filled() {
-            if (!m_index) {
+            if (!m_index.has_value()) {
                 return;
             }
-            if (*m_index == m_map->m_slots.size()) {
+            if (m_index.value() == m_map->m_slots.size()) {
                 m_index = std::nullopt;
                 return;
             }
-            while (*m_index < m_map->m_slots.size()
-                   && m_map->m_slots.at(*m_index).st != slot::state::filled) {
-                *m_index += 1;
+            while (m_index.value() < m_map->m_slots.size()
+                   && m_map->m_slots.at(m_index.value()).st != slot::state::filled) {
+                m_index.value() += 1;
             }
-            if (*m_index == m_map->m_slots.size()) {
+            if (m_index.value() == m_map->m_slots.size()) {
                 m_index = std::nullopt;
             }
         }
@@ -340,7 +340,7 @@ public:
             if (m_cache_valid) {
                 m_cache.destroy();
             }
-            auto &sl = m_map->m_slots.at(*m_index);
+            auto &sl = m_map->m_slots.at(m_index.value());
             if constexpr (std::is_void_v<V>) {
                 m_cache.emplace(sl.key);
             } else {
@@ -354,7 +354,7 @@ public:
             if (!(validative_check() && end_check())) {
                 panic("assertion failed: validative_check() && end_check()");
             }  // TODO: workaround gcc contract bug for template function
-            *m_index += 1;
+            m_index.value() += 1;
             m_counter += 1;
             m_cache_valid = false;
             next_filled();
@@ -458,18 +458,18 @@ public:
         }
 
         void next_filled() {
-            if (!m_index) {
+            if (!m_index.has_value()) {
                 return;
             }
-            if (*m_index == m_map->m_slots.size()) {
+            if (m_index.value() == m_map->m_slots.size()) {
                 m_index = std::nullopt;
                 return;
             }
-            while (*m_index < m_map->m_slots.size()
-                   && m_map->m_slots.at(*m_index).st != slot::state::filled) {
-                *m_index += 1;
+            while (m_index.value() < m_map->m_slots.size()
+                   && m_map->m_slots.at(m_index.value()).st != slot::state::filled) {
+                m_index.value() += 1;
             }
-            if (*m_index == m_map->m_slots.size()) {
+            if (m_index.value() == m_map->m_slots.size()) {
                 m_index = std::nullopt;
             }
         }

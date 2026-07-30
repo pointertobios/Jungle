@@ -66,8 +66,8 @@ using namespace jungle;
 
 int main() {
     erased artwrap{};
-    if (auto &ctx = test::get_async_test_context()) {
-        artwrap = ctx->async_test_run(test::async_test_cases());
+    if (auto &ctx = test::get_async_test_context(); ctx.has_value()) {
+        artwrap = ctx.value().async_test_run(test::async_test_cases());
     }
     usize fail_count{0};
     for (const auto &[area, name, func] : jungle::test::sync_test_cases()) {

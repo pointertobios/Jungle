@@ -83,10 +83,10 @@ public:
             { self().serialize_optional_nullopt() } -> std::same_as<void>;
         }
     {
-        if (value) {
+        if (value.has_value()) {
             self().serialize_optional_nonnull();
             auto subtarget = spawn_subtarget();
-            serialize(*value, subtarget);
+            serialize(value.value(), subtarget);
         } else {
             self().serialize_optional_nullopt();
         }

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <deque>
+#include <memory>
 
 #include "jungle/core/level.h"
 
@@ -12,7 +12,7 @@ namespace jungle::core {
 class Game {
 public:
 private:
-    std::deque<Level> m_levels;
+    std::unique_ptr<Level> m_level{std::make_unique<Level>()};
 };
 
 };  // namespace jungle::core
