@@ -30,6 +30,9 @@ private:
         friend class future;
 
         future *m_future;
+        coroutine_handle m_this_coroutine;
+
+        ~promise_base() { m_this_coroutine.destroy(); }
 
         std::suspend_always initial_suspend() { return {}; }
 
@@ -37,22 +40,18 @@ private:
 
         auto final_suspend() {
             struct final_awaitable {
-                coroutine_handle this_coroutine;
                 std::coroutine_handle<> waiter_coroutine;
 
                 bool await_ready() { return false; }
 
-                auto await_suspend(std::coroutine_handle<>) {
-                    this_coroutine.destroy();
-                    return waiter_coroutine;
-                }
+                auto await_suspend(std::coroutine_handle<>) { return waiter_coroutine; }
 
                 void await_resume() {}
             };
             if (m_future->m_state != future_state::complete) {
                 m_future->m_state = future_state::complete;
             }
-            return final_awaitable{m_future->m_this_coroutine, m_future->m_waiter_coroutine};
+            return final_awaitable{m_future->m_waiter_coroutine};
         }
     };
 
@@ -75,7 +74,10 @@ private:
 
 public:
     struct promise_type : public promise_base_type {
-        future get_return_object() { return future{this, coroutine_handle::from_promise(*this)}; }
+        future get_return_object() {
+            promise_base::m_this_coroutine = coroutine_handle::from_promise(*this);
+            return future{this, promise_base::m_this_coroutine};
+        }
     };
 
     future() = default;
