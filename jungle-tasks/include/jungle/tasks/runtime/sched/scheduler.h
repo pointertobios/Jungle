@@ -57,7 +57,7 @@ private:
     hash_map<task_id, task> m_suspended_tasks;
     hash_set<task_id> m_preawake;
 
-    std::tuple<mpsc<task_id>::sender, mpsc<task_id>::receiver> m_pending_awake{mpsc<task_id>::queue()};
+    std::tuple<container::mpsc<task_id>::sender, container::mpsc<task_id>::receiver> m_pending_awake{container::mpsc<task_id>::queue()};
 };
 
 };  // namespace jungle::tasks::runtime::sched

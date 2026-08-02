@@ -684,7 +684,7 @@ public:
 private:
     static usize probe_step(usize index, usize size) {
         usize step = util::mix64(index) % size;
-        return step == 0 ? 1 : step;
+        return step | 1;
     }
 
     static usize probe_index(usize index, usize step, usize size, usize probe) {

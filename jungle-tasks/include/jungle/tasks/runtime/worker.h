@@ -25,14 +25,14 @@ struct task_item {
     task_block_base *m_task_block;
 };
 
-using task_sender = mpsc<task_item>::sender;
-using task_receiver = mpsc<task_item>::receiver;
+using task_sender = container::mpsc<task_item>::sender;
+using task_receiver = container::mpsc<task_item>::receiver;
 
 class worker final : public jungle::runtime::daemon {
     friend class awake_token;
 
 public:
-    worker(runtime *rt, usize wid, task_receiver &&task_rx, mpsc<usize>::sender &&acceptible_tx)
+    worker(runtime *rt, usize wid, task_receiver &&task_rx, container::mpsc<usize>::sender &&acceptible_tx)
             : daemon{ustr::format("jg::w{}", wid)}
             , m_host_runtime{rt}
             , m_wid{wid}
@@ -64,7 +64,7 @@ private:
     runtime *const m_host_runtime;
     const usize m_wid;
     task_receiver m_task_rx;
-    mpsc<usize>::sender m_acceptible_tx;
+    container::mpsc<usize>::sender m_acceptible_tx;
 
     sched::scheduler m_scheduler;
     /* 当前状态 */

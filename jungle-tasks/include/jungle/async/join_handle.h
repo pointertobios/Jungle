@@ -73,7 +73,7 @@ private:
             return final_awaitable{m_this_coroutine};
         }
 
-    private:
+    protected:
         bool return_state_valid() const {
             auto s = m_task_block->m_state.load(morder::relaxed);
             return s == future_state::non_complete || s == future_state::awaited;

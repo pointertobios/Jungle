@@ -103,7 +103,7 @@ private:
     std::vector<std::unique_ptr<worker>> m_workers{};
 
     std::vector<task_sender> m_senders{};
-    mpsc<usize>::receiver m_acceptible_worker_rx;
+    container::mpsc<usize>::receiver m_acceptible_worker_rx;
 };
 
 };  // namespace jungle::tasks::runtime

@@ -26,7 +26,8 @@ JUNGLE_SYNC_TEST(describe_what_is_tested) {
 }
 ```
 
-- 测试名：snake_case，描述被测试的行为（如 `hash_map_default_state`、`component_id_copy_and_move`）
+- 测试名：snake_case，描述被测试的行为（如 `default_state`、`copy_and_move`）
+- **单个测试函数名不需要添加测试对象名称前缀**——文件名已表明被测对象，无需在函数名中重复
 - 断言消息：**中文**，描述期望行为
 - 无 `try/catch`、`throw`、`dynamic_cast`、`typeid`、RTTI、异常
 

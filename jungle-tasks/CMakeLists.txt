@@ -45,6 +45,7 @@ add_library(jungle::test-async ALIAS jungle-test-async)
 set(JUNGLE_UNIT_TEST_SOURCES
     unit_tests/condition_variable.cpp
     unit_tests/future.cpp
+    unit_tests/mpsc.cpp
     unit_tests/rwspinlock.cpp
     unit_tests/spinlock.cpp
 )

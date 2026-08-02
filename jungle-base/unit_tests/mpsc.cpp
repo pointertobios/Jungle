@@ -10,7 +10,7 @@
 #include <vector>
 
 using namespace jungle;
-using jungle::mpsc;
+using jungle::container::mpsc;
 
 JUNGLE_SYNC_TEST(mpsc_queue_creates_sender_receiver_pair) {
     auto [sender, receiver] = mpsc<int>::queue();

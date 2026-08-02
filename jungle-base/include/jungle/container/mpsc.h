@@ -16,10 +16,10 @@
 #include "jungle/types/raw_storage.h"
 #include "jungle/types/types.h"
 
-namespace jungle {
+namespace jungle::container {
 
 template<concepts::non_void T>
-class mpsc final {
+class mpsc {
     struct slot {
         raw_storage<T> m_data;
         std::atomic_bool m_commited{false};
@@ -31,6 +31,9 @@ public:
 
     public:
         sender() = default;
+
+        sender(std::shared_ptr<mpsc> payload)
+                : m_payload{payload} {}
 
         sender(const sender &) = default;
         sender &operator=(const sender &) = default;
@@ -55,9 +58,6 @@ public:
     private:
         usize mask(usize x) const { return m_payload->mask(x); }
 
-        sender(std::shared_ptr<mpsc> payload)
-                : m_payload{payload} {}
-
         std::shared_ptr<mpsc> m_payload{nullptr};
     };
 
@@ -67,18 +67,15 @@ public:
     public:
         receiver() = default;
 
-        receiver(const sender &) = delete;
-        receiver &operator=(const sender &) = delete;
+        receiver(std::shared_ptr<mpsc> payload)
+                : m_payload{payload} {}
 
-        receiver(sender &&rhs)
-                : m_payload{std::move(rhs.m_payload)} {}
+        receiver(const receiver &) = delete;
+        receiver &operator=(const receiver &) = delete;
 
-        receiver &operator=(sender &&rhs) {
-            if (this != &rhs) {
-                m_payload = std::move(rhs.m_payload);
-            }
-            return *this;
-        }
+        receiver(receiver &&) = default;
+
+        receiver &operator=(receiver &&) = default;
 
         bool is_valid() const { return m_payload != nullptr; }
 
@@ -97,9 +94,6 @@ public:
 
     private:
         usize mask(usize x) const { return m_payload->mask(x); }
-
-        receiver(std::shared_ptr<mpsc> payload)
-                : m_payload{payload} {}
 
         std::shared_ptr<mpsc> m_payload{nullptr};
     };
@@ -122,4 +116,4 @@ private:
     std::atomic<usize> m_head;
 };
 
-};  // namespace jungle
+};  // namespace jungle::container
