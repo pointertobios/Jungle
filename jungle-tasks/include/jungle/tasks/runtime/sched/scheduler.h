@@ -17,9 +17,7 @@
 
 namespace jungle::tasks::runtime {
 
-using task_id = std::coroutine_handle<>;
-
-inline task_id to_task_id(std::coroutine_handle<> root_coroutine) { return root_coroutine; }
+using task_id = void *;
 
 struct task {
     task_id m_id;
@@ -39,7 +37,7 @@ class scheduler final {
     };
 
 public:
-    void attach_task(std::coroutine_handle<> root_coroutine);
+    void attach_task(task_id id, std::coroutine_handle<> root_coroutine);
     std::optional<task> next_task();
     void resched(task t);
     void suspend(task t) pre(t.m_id == m_current_task);

@@ -7,8 +7,8 @@
 
 namespace jungle::tasks::runtime::sched {
 
-void scheduler::attach_task(std::coroutine_handle<> root_coroutine) {
-    m_queue.read()->push_back(task{to_task_id(root_coroutine), root_coroutine});
+void scheduler::attach_task(task_id id, std::coroutine_handle<> root_coroutine) {
+    m_queue.read()->push_back(task{id, root_coroutine});
 }
 
 std::optional<task> scheduler::next_task() {

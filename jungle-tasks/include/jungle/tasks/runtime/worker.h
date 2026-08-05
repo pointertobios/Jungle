@@ -11,9 +11,11 @@
 #include "jungle/async/control.h"
 #include "jungle/container/mpsc.h"
 #include "jungle/runtime/daemon.h"
+#include "jungle/sync/spinlock.h"
 #include "jungle/tasks/runtime/sched/scheduler.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/int.h"
+
 
 namespace jungle::tasks::runtime {
 
@@ -118,9 +120,14 @@ struct task_block_base {
     tasks::runtime::awake_token m_awake_token{tasks::runtime::awake_token::none()};
 
     std::binary_semaphore m_sync_awaiter{0};
-    std::vector<task_block_base *> m_sub_tasks{};
+
+    spinlock<std::vector<task_block_base *>> m_subtasks{};
 
     erased m_bound_invocable{};
+
+    task_id to_task_id() const { return reinterpret_cast<void *>(const_cast<task_block_base *>(this)); }
+
+    static task_block_base *from_task_id(task_id id) { return reinterpret_cast<task_block_base *>(id); }
 };
 
 };  // namespace jungle::tasks::runtime

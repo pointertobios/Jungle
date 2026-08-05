@@ -13,7 +13,8 @@ bool worker::fetch_task() {
     std::optional<task_item> task;
     usize c = 0;
     while ((task = m_task_rx.recv()).has_value()) {
-        m_scheduler.attach_task(task.value().m_root_coroutine);
+        auto &[root_coroutine, task_block] = task.value();
+        m_scheduler.attach_task(task_block->to_task_id(), root_coroutine);
         c++;
     }
     return c != 0;
