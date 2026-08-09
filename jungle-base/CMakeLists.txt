@@ -11,6 +11,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/debug.h
     ${IPREF}/meta.h
     ${IPREF}/os/process.h
+    ${IPREF}/os/shared_memory.h
     ${IPREF}/os/terminal.h
     ${IPREF}/panic.h
     ${IPREF}/preusing.h
@@ -45,6 +46,7 @@ set(JUNGLE_DEPLIBS
 if (LINUX)
     set(JUNGLE_SOURCES ${JUNGLE_SOURCES}
         src/os/linux/process.cpp
+        src/os/linux/shared_memory.cpp
         src/os/linux/terminal.cpp
     )
 
@@ -69,7 +71,13 @@ set(JUNGLE_OPTIONS
     -fno-exceptions
     -fconcepts-diagnostics-depth=6
     $<$<CONFIG:Debug>:-fcontract-evaluation-semantic=enforce>
+    $<$<CONFIG:RelWithDebInfo>:-fcontract-evaluation-semantic=enforce>
     $<$<CONFIG:Release>:-fcontract-evaluation-semantic=quick_enforce>
+)
+
+set(JUNGLE_DEFINES
+    $<$<CONFIG:Debug>:JUNGLE_DEBUG_ENABLED>
+    $<$<CONFIG:RelWithDebInfo>:JUNGLE_DEBUG_ENABLED>
 )
 
 add_library(jungle-base ${JUNGLE_SOURCES})
@@ -77,6 +85,7 @@ target_precompile_headers(jungle-base PUBLIC ${JUNGLE_HEADERS})
 target_link_libraries(jungle-base PUBLIC ${JUNGLE_DEPLIBS})
 target_include_directories(jungle-base PUBLIC include)
 target_compile_options(jungle-base PUBLIC ${JUNGLE_OPTIONS})
+target_compile_definitions(jungle-base PUBLIC ${JUNGLE_DEFINES})
 add_library(jungle::base ALIAS jungle-base)
 
 add_library(jungle-test src/test/test_main.cpp)
@@ -91,6 +100,7 @@ set(JUNGLE_UNIT_TEST_SOURCES
     unit_tests/mpsc.cpp
     unit_tests/serde_text.cpp
     unit_tests/algebra_matrix.cpp
+    unit_tests/shared_memory.cpp
 )
 
 add_executable(jungle-base-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})

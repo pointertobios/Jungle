@@ -29,7 +29,9 @@ void worker::set_yield_now() { m_yield_now = true; }
 bool worker::initialize() {
     tls_this_worker = this;
 
-    os::thread_handle::this_thread().set_affinity(os::cpu_set().with(m_wid));
+    if (!os::thread_handle::this_thread().set_affinity(os::cpu_set().with(m_wid))) {
+        panic("Failed to set affinity for worker thread {}", m_wid);
+    }
     while (!m_acceptible_tx.send(m_wid)) {}
     return true;
 }

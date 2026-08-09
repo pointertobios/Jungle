@@ -16,7 +16,6 @@
 #include "jungle/types/erased.h"
 #include "jungle/types/int.h"
 
-
 namespace jungle::tasks::runtime {
 
 class runtime;
@@ -121,7 +120,7 @@ struct task_block_base {
 
     std::binary_semaphore m_sync_awaiter{0};
 
-    spinlock<std::vector<task_block_base *>> m_subtasks{};
+    sync::spinlock<std::vector<task_block_base *>> m_subtasks{};
 
     erased m_bound_invocable{};
 
