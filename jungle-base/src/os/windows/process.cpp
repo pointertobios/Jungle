@@ -59,7 +59,8 @@ bool set_thread_name(std::thread::native_handle_type tid, const std::string &nam
 }
 
 thread_handle thread_handle::this_thread() {
-    return {reinterpret_cast<std::thread::native_handle_type>(GetCurrentThread())};
+    HANDLE hThread = GetCurrentThread();
+    return {reinterpret_cast<std::thread::native_handle_type>(hThread)};
 }
 
 bool thread_handle::set_name(std::string name) { return set_thread_name(m_tid, name); }

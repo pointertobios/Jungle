@@ -32,11 +32,20 @@ private:
 
 class thread_handle final {
 public:
+    thread_handle() = default;
+
+    thread_handle(const thread_handle &) = default;
+    thread_handle &operator=(const thread_handle &) = default;
+
     thread_handle(std::thread::native_handle_type tid);
 
     static thread_handle from(std::thread &t);
     static thread_handle from(std::jthread &t);
     static thread_handle this_thread();
+
+    std::thread::native_handle_type native_handle() const { return m_tid; }
+
+    bool operator==(const thread_handle &rhs) const { return m_tid == rhs.m_tid; }
 
     bool set_name(std::string name);
 
@@ -47,3 +56,10 @@ private:
 };
 
 };  // namespace jungle::os
+
+template<>
+struct std::hash<jungle::os::thread_handle> {
+    std::size_t operator()(const jungle::os::thread_handle &th) const {
+        return std::hash<std::thread::native_handle_type>{}(th.native_handle());
+    }
+};

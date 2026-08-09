@@ -22,10 +22,9 @@ namespace jungle {
 
 template<typename K>
 concept hash_key =
-    std::is_default_constructible_v<K> && std::is_copy_assignable_v<K> && std::is_copy_constructible_v<K>
-    && std::is_destructible_v<K> && std::equality_comparable<K> && std::copyable<K> && requires(K k) {
-           { std::hash<K>{}(k) } -> std::convertible_to<usize>;
-       };
+    std::is_default_constructible_v<K> && std::equality_comparable<K> && std::copyable<K> && requires(K k) {
+        { std::hash<K>{}(k) } -> std::convertible_to<usize>;
+    };
 
 namespace detail {
 

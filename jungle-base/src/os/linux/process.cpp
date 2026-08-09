@@ -25,7 +25,10 @@ bool set_thread_name(std::thread::native_handle_type tid, const std::string &nam
     return ::pthread_setname_np(tid, name.c_str()) == 0;
 }
 
-thread_handle thread_handle::this_thread() { return {::pthread_self()}; }
+thread_handle thread_handle::this_thread() {
+    thread_local pthread_t tid = ::pthread_self();
+    return {tid};
+}
 
 bool thread_handle::set_name(std::string name) { return set_thread_name(m_tid, name); }
 
