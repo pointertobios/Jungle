@@ -54,6 +54,7 @@ if (LINUX)
 elseif (WIN32)
     set(JUNGLE_SOURCES ${JUNGLE_SOURCES}
         src/os/windows/process.cpp
+        src/os/windows/shared_memory.cpp
         src/os/windows/terminal.cpp
     )
 
