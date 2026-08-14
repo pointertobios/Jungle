@@ -74,7 +74,7 @@ void scheduler::awake(task_id id) {
 bool scheduler::has_suspended() const { return !m_suspended_tasks.is_empty(); }
 
 task scheduler::steal() {
-    auto g = m_queue.read();
+    auto g = m_queue.write();
     if (g->empty()) {
         return {};
     } else {
