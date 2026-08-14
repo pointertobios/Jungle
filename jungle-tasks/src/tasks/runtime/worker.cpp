@@ -20,6 +20,10 @@ bool worker::fetch_task() {
         c++;
     }
 
+    if (c != 0) {
+        return true;
+    }
+
     runtime &rt = *m_host_runtime;
     usize worker_count = rt.worker_count();
     thread_local std::uniform_int_distribution<usize> w{0, worker_count - 1};
