@@ -28,7 +28,7 @@ bool worker::fetch_task() {
     usize worker_count = rt.worker_count();
     thread_local std::uniform_int_distribution<usize> w{0, worker_count - 1};
     usize steal_wid = w(rng());
-    if (steal_wid != m_wid) {
+    if (steal_wid == m_wid) {
         steal_wid = (steal_wid + 1) % worker_count;
     }
     auto &steal_worker = rt.get_worker(steal_wid);
