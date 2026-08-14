@@ -20,8 +20,10 @@ namespace jungle::tasks::runtime {
 using task_id = void *;
 
 struct task {
-    task_id m_id;
-    std::coroutine_handle<> m_resume_handle;
+    task_id m_id{};
+    std::coroutine_handle<> m_resume_handle{};
+
+    operator bool() const { return m_id != nullptr; }
 };
 
 };  // namespace jungle::tasks::runtime
@@ -37,13 +39,15 @@ class scheduler final {
     };
 
 public:
-    void attach_task(task_id id, std::coroutine_handle<> root_coroutine);
+    void attach_task(const task &t);
     std::optional<task> next_task();
     void resched(task t);
     void suspend(task t) pre(t.m_id == m_current_task);
     void awake(task_id id);
 
     bool has_suspended() const;
+
+    task steal();
 
 private:
     void awake_impl(task_id id);

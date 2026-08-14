@@ -35,7 +35,7 @@ protected:
     virtual void finalize() = 0;
 
 private:
-    ustr m_name{"jg-daemon"};
+    ustr m_name{"jg::daemon"};
 
     bool m_joined{false};
     std::counting_semaphore<> m_idle_sem{0};

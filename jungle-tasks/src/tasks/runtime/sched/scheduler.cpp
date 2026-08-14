@@ -7,8 +7,8 @@
 
 namespace jungle::tasks::runtime::sched {
 
-void scheduler::attach_task(task_id id, std::coroutine_handle<> root_coroutine) {
-    m_queue.read()->push_back(task{id, root_coroutine});
+void scheduler::attach_task(const task &t) {
+    m_queue.read()->push_back(t);
 }
 
 std::optional<task> scheduler::next_task() {
@@ -72,6 +72,17 @@ void scheduler::awake(task_id id) {
 }
 
 bool scheduler::has_suspended() const { return !m_suspended_tasks.is_empty(); }
+
+task scheduler::steal() {
+    auto g = m_queue.read();
+    if (g->empty()) {
+        return {};
+    } else {
+        auto res = g->back();
+        g->pop_back();
+        return res;
+    }
+}
 
 void scheduler::awake_impl(task_id id) {
     if (auto t = m_suspended_tasks.remove(id)) {

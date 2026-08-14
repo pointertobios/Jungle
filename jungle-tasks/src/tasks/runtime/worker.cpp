@@ -6,17 +6,34 @@
 
 #include "jungle/os/process.h"
 #include "jungle/tasks/runtime/worker.h"
+#include "jungle/util/rng.h"
 
 namespace jungle::tasks::runtime {
 
 bool worker::fetch_task() {
-    std::optional<task_item> task;
+    std::optional<task_item> new_task;
     usize c = 0;
-    while ((task = m_task_rx.recv()).has_value()) {
-        auto &[root_coroutine, task_block] = task.value();
-        m_scheduler.attach_task(task_block->to_task_id(), root_coroutine);
+
+    while ((new_task = m_task_rx.recv()).has_value()) {
+        auto &[root_coroutine, task_block] = new_task.value();
+        m_scheduler.attach_task(task{task_block->to_task_id(), root_coroutine});
         c++;
     }
+
+    runtime &rt = *m_host_runtime;
+    usize worker_count = rt.worker_count();
+    thread_local std::uniform_int_distribution<usize> w{0, worker_count - 1};
+    usize steal_wid = w(rng());
+    if (steal_wid != m_wid) {
+        steal_wid = (steal_wid + 1) % worker_count;
+    }
+    auto &steal_worker = rt.get_worker(steal_wid);
+    task t = steal_worker.get_scheduler().steal();
+    if (t) {
+        m_scheduler.attach_task(t);
+        c++;
+    }
+
     return c != 0;
 }
 
@@ -37,9 +54,12 @@ bool worker::initialize() {
 }
 
 bool worker::run_once(std::stop_token &st) {
-    wait_for_awake();
     while (!m_acceptible_tx.send(m_wid)) {}
+
     bool fetched_new_task = fetch_task();
+    if (!fetched_new_task) {
+        wait_for_awake();
+    }
 
     std::optional<task> t{std::nullopt};
     while ((t = m_scheduler.next_task())) {

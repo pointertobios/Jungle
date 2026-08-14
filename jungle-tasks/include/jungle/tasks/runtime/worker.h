@@ -11,7 +11,6 @@
 #include "jungle/async/control.h"
 #include "jungle/container/mpsc.h"
 #include "jungle/runtime/daemon.h"
-#include "jungle/sync/spinlock.h"
 #include "jungle/tasks/runtime/sched/scheduler.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/int.h"
@@ -120,7 +119,7 @@ struct task_block_base {
 
     std::binary_semaphore m_sync_awaiter{0};
 
-    sync::spinlock<std::vector<task_block_base *>> m_subtasks{};
+    std::vector<task_block_base *> m_subtasks{};
 
     erased m_bound_invocable{};
 

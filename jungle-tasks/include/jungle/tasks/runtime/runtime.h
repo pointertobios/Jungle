@@ -47,6 +47,9 @@ public:
     explicit runtime(runtime_config config);
     ~runtime();
 
+    usize worker_count() const { return m_workers.size(); }
+    worker &get_worker(usize wid) { return *m_workers[wid]; }
+
     template<typename... Args>
     auto spawn(async::async_function<Args...> auto &&fn, Args &&...args)
         requires requires {
@@ -55,8 +58,15 @@ public:
     {
         auto jh =
             task_coroutine(async::co_invoke(std::forward<decltype(fn)>(fn), std::forward<Args>(args)...));
-        std::uniform_int_distribution<usize> w{0, m_workers.size() - 1};
-        usize x = w(rng());
+
+        usize x;
+        if (auto wid = m_acceptible_worker_rx.recv(); wid.has_value()) {
+            x = wid.value();
+        } else {
+            thread_local std::uniform_int_distribution<usize> w{0, m_workers.size() - 1};
+            x = w(rng());
+        }
+
         m_senders[x].send(jh.get_task_item());
         m_workers[x]->awake();
         return jh;
