@@ -44,7 +44,7 @@ public:
 
     bool operator==(const worker &rhs) const { return m_wid == rhs.m_wid; }
 
-    usize id() const { m_wid; }
+    usize id() const { return m_wid; }
 
     runtime &host_runtime() const { return *m_host_runtime; }
 
