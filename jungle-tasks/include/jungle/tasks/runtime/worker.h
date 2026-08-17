@@ -11,7 +11,7 @@
 #include "jungle/async/control.h"
 #include "jungle/container/mpsc.h"
 #include "jungle/runtime/daemon.h"
-#include "jungle/tasks/runtime/sched/scheduler.h"
+#include "jungle/tasks/runtime/scheduler.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/int.h"
 

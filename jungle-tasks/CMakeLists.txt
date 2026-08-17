@@ -14,7 +14,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/sync/spinlock.h
     ${IPREF}/tasks/runtime/blocking_worker.h
     ${IPREF}/tasks/runtime/runtime.h
-    ${IPREF}/tasks/runtime/sched/scheduler.h
+    ${IPREF}/tasks/runtime/scheduler.h
     ${IPREF}/tasks/runtime/worker.h
     ${IPREF}/tasks/this_task.h
     ${IPREF}/test/async_test.h
@@ -23,7 +23,7 @@ set(JUNGLE_HEADERS
 set(JUNGLE_SOURCES
     src/sync/condition_variable.cpp
     src/tasks/runtime/runtime.cpp
-    src/tasks/runtime/sched/scheduler.cpp
+    src/tasks/runtime/scheduler.cpp
     src/tasks/runtime/worker.cpp
     src/tasks/this_task.cpp
     src/test/async_test.cpp

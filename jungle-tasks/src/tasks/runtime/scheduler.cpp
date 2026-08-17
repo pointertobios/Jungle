@@ -3,7 +3,7 @@
 
 #include <ranges>
 
-#include "jungle/tasks/runtime/sched/scheduler.h"
+#include "jungle/tasks/runtime/scheduler.h"
 
 namespace jungle::tasks::runtime::sched {
 
