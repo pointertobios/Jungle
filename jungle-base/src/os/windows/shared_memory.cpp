@@ -22,14 +22,6 @@ namespace jungle::os {
 
 namespace {
 
-struct shm_header {
-    usize size;
-    std::atomic<usize> holder_count;
-};
-
-static_assert(
-    std::atomic<usize>::is_always_lock_free, "std::atomic<usize> 必须是无锁的才能用于共享内存进程间通信");
-
 struct win_shm {
     HANDLE mapping;
     void *addr;
@@ -83,7 +75,7 @@ std::optional<shared_memory> shared_memory::create(ustr name, usize size) {
     new (addr) shm_header{size, 1};
 
     win_shm shm{h, addr, total};
-    return shared_memory{}.with_extra(erased{std::move(shm)});
+    return shared_memory{true}.with_extra(erased{std::move(shm)});
 }
 
 std::optional<shared_memory> shared_memory::attach(ustr name) {
@@ -106,10 +98,8 @@ std::optional<shared_memory> shared_memory::attach(ustr name) {
     usize total = calc_total(hdr->size);
 
     win_shm shm{h, addr, total};
-    return shared_memory{}.with_extra(erased{std::move(shm)});
+    return shared_memory{false}.with_extra(erased{std::move(shm)});
 }
-
-shared_memory::shared_memory() = default;
 
 shared_memory::~shared_memory() {
     if (!m_extra) {
@@ -119,7 +109,11 @@ shared_memory::~shared_memory() {
     auto &shm = m_extra.get<win_shm>();
     auto *hdr = get_header(shm.addr);
 
-    hdr->holder_count.fetch_sub(1, morder::relaxed);
+    usize cnt = hdr->holder_count.fetch_sub(1, morder::relaxed) - 1;
+
+    if (cnt == 0 && m_dtor) {
+        m_dtor(get());
+    }
 
     ::UnmapViewOfFile(shm.addr);
     ::CloseHandle(shm.mapping);

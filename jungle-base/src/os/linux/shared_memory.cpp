@@ -1,8 +1,8 @@
 // Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
 // SPDX-License-Identifier: MIT
 
-#include "jungle/constants.h"
 #include "jungle/os/shared_memory.h"
+#include "jungle/constants.h"
 
 #include <atomic>
 #include <optional>
@@ -17,35 +17,19 @@ namespace jungle::os {
 
 namespace {
 
-struct shm_header {
-    usize size;
-    std::atomic<usize> holder_count;
-};
-
-static_assert(std::atomic<usize>::is_always_lock_free,
-              "std::atomic<usize> 必须是无锁的才能用于共享内存进程间通信");
-
 struct linux_shm {
     std::string name;
     void *addr;
     usize total_size;
 };
 
-constexpr usize header_size() {
-    return sizeof(shm_header);
-}
+constexpr usize header_size() { return sizeof(shm_header); }
 
-usize calc_total(usize user_size) {
-    return header_size() + user_size;
-}
+usize calc_total(usize user_size) { return header_size() + user_size; }
 
-shm_header *get_header(void *addr) {
-    return static_cast<shm_header *>(addr);
-}
+shm_header *get_header(void *addr) { return static_cast<shm_header *>(addr); }
 
-void *get_user_data(void *addr) {
-    return static_cast<i8 *>(addr) + header_size();
-}
+void *get_user_data(void *addr) { return static_cast<i8 *>(addr) + header_size(); }
 
 };  // namespace
 
@@ -81,7 +65,7 @@ std::optional<shared_memory> shared_memory::create(ustr name, usize size) {
         total,
     };
 
-    return shared_memory{}.with_extra(erased{std::move(shm)});
+    return shared_memory{true}.with_extra(erased{std::move(shm)});
 }
 
 std::optional<shared_memory> shared_memory::attach(ustr name) {
@@ -117,20 +101,23 @@ std::optional<shared_memory> shared_memory::attach(ustr name) {
         total,
     };
 
-    return shared_memory{}.with_extra(erased{std::move(shm)});
+    return shared_memory{false}.with_extra(erased{std::move(shm)});
 }
 
-shared_memory::shared_memory() = default;
-
 shared_memory::~shared_memory() {
-    if (!m_extra) return;
+    if (!m_extra) {
+        return;
+    }
 
     auto &shm = m_extra.get<linux_shm>();
     auto *hdr = get_header(shm.addr);
 
-    usize prev = hdr->holder_count.fetch_sub(1, morder::relaxed) - 1;
+    usize cnt = hdr->holder_count.fetch_sub(1, morder::relaxed) - 1;
 
-    if (prev == 0) {
+    if (cnt == 0) {
+        if (m_dtor) {
+            m_dtor(get());
+        }
         ::shm_unlink(shm.name.c_str());
     }
 
