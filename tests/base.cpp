@@ -82,6 +82,7 @@ int main() {
     using jungle::tasks::runtime::runtime_config;
     {
         auto rt = runtime_config{}.multi_threaded().build();
+        rt.spawn_blocking([] { std::println("blocking task"); });
         rt.block_on(async_test);
     }
 

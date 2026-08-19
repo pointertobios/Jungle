@@ -8,12 +8,14 @@
 #include <semaphore>
 #include <stop_token>
 #include <thread>
+#include <type_traits>
 
 #include "jungle/async/future.h"
 #include "jungle/async/invoke.h"
 #include "jungle/async/join_handle.h"
 #include "jungle/container/mpsc.h"
 #include "jungle/preusing.h"
+#include "jungle/tasks/runtime/blocking_worker.h"
 #include "jungle/tasks/runtime/worker.h"
 #include "jungle/types/concepts.h"
 #include "jungle/util/rng.h"
@@ -51,11 +53,7 @@ public:
     worker &get_worker(usize wid) { return *m_workers[wid]; }
 
     template<typename... Args>
-    auto spawn(async::async_function<Args...> auto &&fn, Args &&...args)
-        requires requires {
-            { fn(args...) } -> async::future_type;
-        }
-    {
+    auto spawn(async::async_function<Args...> auto &&fn, Args &&...args) {
         auto jh =
             task_coroutine(async::co_invoke(std::forward<decltype(fn)>(fn), std::forward<Args>(args)...));
 
@@ -67,17 +65,13 @@ public:
             x = w(rng());
         }
 
-        m_senders[x].send(jh.get_task_item());
+        (void)m_senders[x].send(jh.get_task_item());
         m_workers[x]->awake();
         return jh;
     }
 
     template<typename... Args>
-    auto block_on(async::async_function<Args...> auto &&fn, Args &&...args)
-        requires requires {
-            { fn(args...) } -> async::future_type;
-        }
-    pre(m_multi_threaded) {
+    auto block_on(async::async_function<Args...> auto &&fn, Args &&...args) pre(m_multi_threaded) {
         auto jh = spawn(std::forward<decltype(fn)>(fn), std::forward<Args>(args)...);
 
         if constexpr (concepts::is_void<typename decltype(jh)::output_type>) {
@@ -85,6 +79,33 @@ public:
         } else {
             return jh.blocking_await();
         }
+    }
+
+    template<typename... Args>
+    auto spawn_blocking(std::invocable<Args...> auto &&fn, Args &&...args)
+        requires(!async::async_function<decltype(fn), Args...>)
+    pre(m_multi_threaded) {
+        auto jh = blocking_task_coroutine(std::forward<decltype(fn)>(fn), std::forward<Args>(args)...);
+
+        usize x;
+        if (auto wid = m_acceptible_blocking_worker_rx.recv(); wid.has_value()) {
+            x = wid.value();
+        } else {
+            auto [tx, rx] = container::mpsc<task_item>::queue();
+            m_blocking_senders.write()->emplace_back(std::move(tx));
+            auto atx = m_acceptible_blocking_worker_tx;
+
+            auto g = m_blocking_workers.write();
+            x = m_worker_id_gen++;
+            auto &w = g->emplace_back(std::make_unique<blocking_worker>(this, x, std::move(rx), std::move(atx)));
+            { auto _ = std::move(g); }
+
+            w->start();
+        }
+        x -= m_blocking_pool_start;
+
+        (void)m_blocking_senders.read()->at(x).send(jh.get_task_item());
+        m_blocking_workers.read()->at(x)->awake();
     }
 
     void main_loop() pre(!m_multi_threaded);
@@ -106,14 +127,32 @@ private:
         }
     }
 
+    template<typename... Args>
+    auto blocking_task_coroutine(std::invocable<Args...> auto fn, Args &&...args)
+        -> async::join_handle<std::invoke_result_t<decltype(fn)>> {
+        if constexpr (concepts::is_void<std::invoke_result_t<decltype(fn)>>) {
+            std::invoke(fn, args...);
+            co_return;
+        } else {
+            co_return std::invoke(fn, args...);
+        }
+    }
+
     const bool m_multi_threaded;
+    const usize m_blocking_pool_start;
 
     std::stop_source m_stop;
 
-    std::vector<std::unique_ptr<worker>> m_workers{};
+    usize m_worker_id_gen;
 
+    std::vector<std::unique_ptr<worker>> m_workers{};
     std::vector<task_sender> m_senders{};
     container::mpsc<usize>::receiver m_acceptible_worker_rx;
+
+    sync::rwspinlock<std::vector<std::unique_ptr<blocking_worker>>> m_blocking_workers;
+    sync::rwspinlock<std::vector<task_sender>, true> m_blocking_senders{};
+    container::mpsc<usize>::receiver m_acceptible_blocking_worker_rx;
+    container::mpsc<usize>::sender m_acceptible_blocking_worker_tx;
 };
 
 };  // namespace jungle::tasks::runtime

@@ -53,7 +53,6 @@ bool worker::initialize() {
     if (!os::thread_handle::this_thread().set_affinity(os::cpu_set().with(m_wid))) {
         panic("Failed to set affinity for worker thread {}", m_wid);
     }
-    while (!m_acceptible_tx.send(m_wid)) {}
     return true;
 }
 
@@ -85,7 +84,5 @@ bool worker::run_once(std::stop_token &st) {
 
     return t || fetched_new_task || m_scheduler.has_suspended() || !st.stop_requested();
 }
-
-void worker::finalize() {}
 
 };  // namespace jungle::tasks::runtime

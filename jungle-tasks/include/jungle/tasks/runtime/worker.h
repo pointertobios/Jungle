@@ -9,24 +9,13 @@
 #include <semaphore>
 
 #include "jungle/async/control.h"
-#include "jungle/container/mpsc.h"
 #include "jungle/runtime/daemon.h"
+#include "jungle/tasks/runtime/predecl.h"
 #include "jungle/tasks/runtime/scheduler.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/int.h"
 
 namespace jungle::tasks::runtime {
-
-class runtime;
-struct task_block_base;
-
-struct task_item {
-    std::coroutine_handle<> m_root_coroutine;
-    task_block_base *m_task_block;
-};
-
-using task_sender = container::mpsc<task_item>::sender;
-using task_receiver = container::mpsc<task_item>::receiver;
 
 class worker final : public jungle::runtime::daemon {
     friend class awake_token;
@@ -59,7 +48,7 @@ public:
 private:
     bool initialize() override;
     bool run_once(std::stop_token &st) override;
-    void finalize() override;
+    void finalize() override {}
 
     runtime *const m_host_runtime;
     const usize m_wid;
