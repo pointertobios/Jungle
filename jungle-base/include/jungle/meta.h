@@ -51,6 +51,7 @@ consteval std::meta::info nth_template_annotation_argument_of(usize nth) {
             }
         }
     }
+    return ^^void;
 }
 
 template<std::meta::info Specialization, std::meta::info Template>

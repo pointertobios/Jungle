@@ -5,6 +5,7 @@
 
 #include "jungle/async/future.h"
 #include "jungle/async/invoke.h"
+#include "jungle/build_id.h"
 #include "jungle/core/ecs/component_storage.h"
 #include "jungle/core/ecs/entity.h"
 #include "jungle/core/level.h"
@@ -68,6 +69,8 @@ async::future<> async_test() {
 }
 
 int main() {
+    std::println("build id: {}<{:016x}>", build_id_string(), build_id());
+
     using core::ecs::Entity;
     Entity entity{0x123456789abcdef0};
     auto c = Color::Green;

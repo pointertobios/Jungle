@@ -6,6 +6,7 @@ set(IPREF "include/jungle") # Include prefix for headers
 set(JUNGLE_HEADERS
     ${IPREF}/algebra/matrix.h
     ${IPREF}/algebra/scalar.h
+    ${IPREF}/build_id.h
     ${IPREF}/container/hash_map.h
     ${IPREF}/container/mpsc.h
     ${IPREF}/debug.h
@@ -32,6 +33,7 @@ set(JUNGLE_HEADERS
 )
 
 set(JUNGLE_SOURCES
+    src/build_id.cpp
     src/os/process.cpp
     src/runtime/daemon.cpp
     src/panic.cpp
@@ -76,9 +78,13 @@ set(JUNGLE_OPTIONS
     $<$<CONFIG:Release>:-fcontract-evaluation-semantic=quick_enforce>
 )
 
+include(JungleBuildId)
+jungle_generate_build_id(JUNGLE_BUILD_ID "${CMAKE_SOURCE_DIR}")
+
 set(JUNGLE_DEFINES
     $<$<CONFIG:Debug>:JUNGLE_DEBUG_ENABLED>
     $<$<CONFIG:RelWithDebInfo>:JUNGLE_DEBUG_ENABLED>
+    JUNGLE_BUILD_ID="${JUNGLE_BUILD_ID}"
 )
 
 add_library(jungle-base ${JUNGLE_SOURCES})
