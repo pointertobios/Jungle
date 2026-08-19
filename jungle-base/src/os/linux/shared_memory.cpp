@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 #include "jungle/os/shared_memory.h"
-#include "jungle/constants.h"
 
 #include <atomic>
 #include <optional>
@@ -12,6 +11,9 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include "jungle/build_id.h"
+#include "jungle/constants.h"
 
 namespace jungle::os {
 
@@ -55,7 +57,7 @@ std::optional<shared_memory> shared_memory::create(ustr name, usize size) {
         return std::nullopt;
     }
 
-    new (addr) shm_header{size, 1};
+    new (addr) shm_header{size, 1, jungle::build_id()};
 
     ::close(fd);
 
@@ -91,6 +93,11 @@ std::optional<shared_memory> shared_memory::attach(ustr name) {
     }
 
     auto *hdr = get_header(addr);
+    if (hdr->build_id != jungle::build_id()) {
+        ::munmap(addr, total);
+        ::close(fd);
+        return std::nullopt;
+    }
     hdr->holder_count.fetch_add(1, morder::relaxed);
 
     ::close(fd);

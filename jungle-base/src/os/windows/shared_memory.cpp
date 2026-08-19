@@ -16,6 +16,7 @@
 #endif
 #include <windows.h>
 
+#include "jungle/build_id.h"
 #include "jungle/constants.h"
 
 namespace jungle::os {
@@ -72,7 +73,7 @@ std::optional<shared_memory> shared_memory::create(ustr name, usize size) {
         return std::nullopt;
     }
 
-    new (addr) shm_header{size, 1};
+    new (addr) shm_header{size, 1, jungle::build_id()};
 
     win_shm shm{h, addr, total};
     return shared_memory{true}.with_extra(erased{std::move(shm)});
@@ -93,6 +94,11 @@ std::optional<shared_memory> shared_memory::attach(ustr name) {
     }
 
     auto *hdr = get_header(addr);
+    if (hdr->build_id != jungle::build_id()) {
+        ::UnmapViewOfFile(addr);
+        ::CloseHandle(h);
+        return std::nullopt;
+    }
     hdr->holder_count.fetch_add(1, morder::relaxed);
 
     usize total = calc_total(hdr->size);

@@ -16,6 +16,7 @@ namespace jungle::os {
 struct alignas(cacheline_size) shm_header {
     usize size;
     std::atomic<usize> holder_count;
+    const u64 build_id;
 };
 
 static_assert(
