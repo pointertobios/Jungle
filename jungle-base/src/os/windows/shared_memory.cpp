@@ -49,7 +49,7 @@ std::wstring to_wstring(std::string_view utf8) {
 
 };  // namespace
 
-std::optional<shared_memory> shared_memory::create(ustr name, usize size) {
+std::optional<shared_memory> shared_memory::create(const ustr &name, usize size) {
     std::wstring wname = to_wstring(name.view());
     usize total = calc_total(size);
 
@@ -79,7 +79,7 @@ std::optional<shared_memory> shared_memory::create(ustr name, usize size) {
     return shared_memory{true}.with_extra(erased{std::move(shm)});
 }
 
-std::optional<shared_memory> shared_memory::attach(ustr name) {
+std::optional<shared_memory> shared_memory::attach(const ustr &name) {
     std::wstring wname = to_wstring(name.view());
 
     HANDLE h = ::OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, wname.c_str());

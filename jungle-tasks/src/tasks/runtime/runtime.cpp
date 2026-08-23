@@ -49,6 +49,10 @@ runtime::runtime(runtime_config config)
 
     std::tie(m_acceptible_blocking_worker_tx, m_acceptible_blocking_worker_rx) =
         container::mpsc<usize>::queue();
+
+#ifdef JUNGLE_DEBUG_ENABLED
+    m_debug_host->start();
+#endif
 }
 
 runtime::~runtime() {

@@ -13,6 +13,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/sync/rwspinlock.h
     ${IPREF}/sync/spinlock.h
     ${IPREF}/tasks/runtime/blocking_worker.h
+    ${IPREF}/tasks/runtime/debug_host.h
     ${IPREF}/tasks/runtime/runtime.h
     ${IPREF}/tasks/runtime/scheduler.h
     ${IPREF}/tasks/runtime/worker.h
@@ -23,6 +24,8 @@ set(JUNGLE_HEADERS
 set(JUNGLE_SOURCES
     src/sync/condition_variable.cpp
     src/tasks/runtime/blocking_worker.cpp
+    src/tasks/runtime/debug_host.cpp
+    src/tasks/runtime/debug_host_string_pool.cpp
     src/tasks/runtime/runtime.cpp
     src/tasks/runtime/scheduler.cpp
     src/tasks/runtime/worker.cpp

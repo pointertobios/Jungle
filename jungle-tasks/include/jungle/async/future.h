@@ -4,6 +4,7 @@
 #pragma once
 
 #include <coroutine>
+#include <source_location>
 #include <utility>
 
 #include "jungle/async/control.h"
@@ -12,6 +13,12 @@
 #include "jungle/preusing.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/raw_storage.h"
+
+#ifdef JUNGLE_DEBUG_ENABLED
+#    include "jungle/tasks/runtime/debug_host.h"
+#    include "jungle/tasks/runtime/worker.h"
+#    include "jungle/tasks/this_task.h"
+#endif
 
 namespace jungle::async {
 
@@ -31,6 +38,10 @@ private:
 
         future *m_future;
         coroutine_handle m_this_coroutine;
+
+#ifdef JUNGLE_DEBUG_ENABLED
+        std::source_location m_source_location;
+#endif
 
         ~promise_base() { m_this_coroutine.destroy(); }
 
@@ -74,7 +85,10 @@ private:
 
 public:
     struct promise_type : public promise_base_type {
-        future get_return_object() {
+        future get_return_object(std::source_location sl = std::source_location::current()) {
+#ifdef JUNGLE_DEBUG_ENABLED
+            promise_base::m_source_location = sl;
+#endif
             promise_base::m_this_coroutine = coroutine_handle::from_promise(*this);
             return future{this, promise_base::m_this_coroutine};
         }
@@ -108,11 +122,20 @@ public:
     bool await_ready() pre(!is_empty()) { return false; }
 
     auto await_suspend(std::coroutine_handle<> waiter) pre(!is_empty()) {
+#ifdef JUNGLE_DEBUG_ENABLED
+        get_debug_host().trace_coroutine_start(
+            this_task::worker().id(), this_task::id(), m_promise->m_source_location);
+#endif
+
         m_waiter_coroutine = waiter;
         return m_this_coroutine;
     }
 
     T await_resume() pre(!is_empty()) {
+#ifdef JUNGLE_DEBUG_ENABLED
+        get_debug_host().trace_coroutine_end(this_task::worker().id(), this_task::id());
+#endif
+
         if constexpr (concepts::is_void<T>) {
             m_state = future_state::empty;
             return;
@@ -133,6 +156,12 @@ private:
             , m_this_coroutine{this_coroutine} {
         m_promise->m_future = this;
     }
+
+#ifdef JUNGLE_DEBUG_ENABLED
+    static tasks::runtime::debug_host &get_debug_host() {
+        return tasks::runtime::worker::current().host_runtime().get_debug_host();
+    };
+#endif
 
     promise_type *m_promise{nullptr};
     [[no_unique_address]] raw_storage<T> m_storage{};

@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "jungle/os/process.h"
+#include "jungle/tasks/runtime/debug_host.h"
 #include "jungle/tasks/runtime/worker.h"
 #include "jungle/util/rng.h"
 
@@ -72,6 +73,7 @@ bool worker::run_once(std::stop_token &st) {
         }
         if (m_next_resume) {
             t->m_resume_handle = m_next_resume;
+            m_next_resume = std::coroutine_handle<>{};
             if (m_suspend_now) {
                 m_scheduler.suspend(*t);
             } else {
@@ -83,6 +85,22 @@ bool worker::run_once(std::stop_token &st) {
     }
 
     return t || fetched_new_task || m_scheduler.has_suspended() || !st.stop_requested();
+}
+
+void awake_token::suspend(std::coroutine_handle<> resume_coroutine) {
+#ifdef JUNGLE_DEBUG_ENABLED
+    m_worker->host_runtime().get_debug_host().trace_coroutine_suspend(m_worker->id(), m_task);
+#endif
+    m_worker->set_suspend_now();
+    m_worker->set_next_resume(resume_coroutine);
+}
+
+void awake_token::awake() {
+#ifdef JUNGLE_DEBUG_ENABLED
+    m_worker->host_runtime().get_debug_host().trace_coroutine_awake(m_worker->id(), m_task);
+#endif
+    m_worker->get_scheduler().awake(m_task);
+    m_worker->awake();
 }
 
 };  // namespace jungle::tasks::runtime

@@ -25,13 +25,12 @@ static_assert(
 class shared_memory final {
 public:
     /// 创建新的共享内存，若同名共享内存已存在则返回 std::nullopt
-    static std::optional<shared_memory> create(ustr name, usize size);
+    static std::optional<shared_memory> create(const ustr &name, usize size);
 
     /// 持有一个已创建的共享内存，若不存在则返回 std::nullopt
-    static std::optional<shared_memory> attach(ustr name);
+    static std::optional<shared_memory> attach(const ustr &name);
 
     template<typename T, typename... Args>
-        requires(alignof(T) == 1)
     static std::optional<shared_memory> create(const ustr &name, Args &&...args) {
         auto shm = create(name, sizeof(T));
         if (shm.has_value()) {

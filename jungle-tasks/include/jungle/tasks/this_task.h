@@ -24,6 +24,10 @@ inline auto yield() {
     return yield_awaitable{};
 }
 
+inline auto &worker() { return runtime::worker::current(); }
+
+inline auto id() { return runtime::worker::current().this_task_id(); }
+
 };  // namespace jungle::tasks::this_task
 
 namespace jungle {

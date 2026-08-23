@@ -35,7 +35,7 @@ void *get_user_data(void *addr) { return static_cast<i8 *>(addr) + header_size()
 
 };  // namespace
 
-std::optional<shared_memory> shared_memory::create(ustr name, usize size) {
+std::optional<shared_memory> shared_memory::create(const ustr &name, usize size) {
     std::string name_str{name.view()};
     usize total = calc_total(size);
 
@@ -70,7 +70,7 @@ std::optional<shared_memory> shared_memory::create(ustr name, usize size) {
     return shared_memory{true}.with_extra(erased{std::move(shm)});
 }
 
-std::optional<shared_memory> shared_memory::attach(ustr name) {
+std::optional<shared_memory> shared_memory::attach(const ustr &name) {
     std::string name_str{name.view()};
 
     int fd = ::shm_open(name_str.c_str(), O_RDWR, 0);

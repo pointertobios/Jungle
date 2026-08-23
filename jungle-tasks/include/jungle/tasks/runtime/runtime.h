@@ -16,6 +16,7 @@
 #include "jungle/container/mpsc.h"
 #include "jungle/preusing.h"
 #include "jungle/tasks/runtime/blocking_worker.h"
+#include "jungle/tasks/runtime/debug_host.h"
 #include "jungle/tasks/runtime/worker.h"
 #include "jungle/types/concepts.h"
 #include "jungle/util/rng.h"
@@ -52,6 +53,10 @@ public:
     usize worker_count() const { return m_workers.size(); }
     worker &get_worker(usize wid) { return *m_workers[wid]; }
 
+#ifdef JUNGLE_DEBUG_ENABLED
+    debug_host &get_debug_host() { return *m_debug_host; }
+#endif
+
     template<typename... Args>
     auto spawn(async::async_function<Args...> auto &&fn, Args &&...args) {
         auto jh =
@@ -65,8 +70,14 @@ public:
             x = w(rng());
         }
 
-        (void)m_senders[x].send(jh.get_task_item());
-        m_workers[x]->awake();
+        auto ta = jh.get_task_item();
+        auto &target_worker = *m_workers[x];
+
+        if (m_senders[x].send(try_move(ta))) {
+            target_worker.fetch_task();
+            (void)m_senders[x].send(try_move(ta));
+        }
+        target_worker.awake();
         return jh;
     }
 
@@ -97,7 +108,8 @@ public:
 
             auto g = m_blocking_workers.write();
             x = m_worker_id_gen++;
-            auto &w = g->emplace_back(std::make_unique<blocking_worker>(this, x, std::move(rx), std::move(atx)));
+            auto &w =
+                g->emplace_back(std::make_unique<blocking_worker>(this, x, std::move(rx), std::move(atx)));
             { auto _ = std::move(g); }
 
             w->start();
@@ -153,6 +165,10 @@ private:
     sync::rwspinlock<std::vector<task_sender>, true> m_blocking_senders{};
     container::mpsc<usize>::receiver m_acceptible_blocking_worker_rx;
     container::mpsc<usize>::sender m_acceptible_blocking_worker_tx;
+
+#ifdef JUNGLE_DEBUG_ENABLED
+    std::unique_ptr<debug_host> m_debug_host{std::make_unique<debug_host>()};
+#endif
 };
 
 };  // namespace jungle::tasks::runtime

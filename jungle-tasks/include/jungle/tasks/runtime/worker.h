@@ -41,6 +41,8 @@ public:
 
     bool fetch_task();
 
+    task_id this_task_id() const { return m_this_task; }
+
     void set_next_resume(std::coroutine_handle<> coroutine);
     void set_suspend_now();
     void set_yield_now();
@@ -83,15 +85,9 @@ public:
 
     bool operator==(const awake_token &rhs) const { return m_worker == rhs.m_worker && m_task == rhs.m_task; }
 
-    void suspend(std::coroutine_handle<> resume_coroutine) pre(*m_worker == worker::current()) {
-        m_worker->set_suspend_now();
-        m_worker->set_next_resume(resume_coroutine);
-    }
+    void suspend(std::coroutine_handle<> resume_coroutine) pre(*m_worker == worker::current());
 
-    void awake() {
-        m_worker->get_scheduler().awake(m_task);
-        m_worker->awake();
-    }
+    void awake();
 
 private:
     awake_token(worker *w, task_id t)
