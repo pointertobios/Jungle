@@ -11,6 +11,7 @@
 
 using namespace jungle;
 using jungle::container::mpsc;
+using jungle::container::receive_failed;
 
 JUNGLE_SYNC_TEST(mpsc_queue_creates_sender_receiver_pair) {
     auto [sender, receiver] = mpsc<int>::queue();
@@ -32,11 +33,11 @@ JUNGLE_SYNC_TEST(mpsc_single_send_recv) {
     JUNGLE_SYNC_SUCCESS();
 }
 
-JUNGLE_SYNC_TEST(mpsc_empty_queue_recv_returns_nullopt) {
+JUNGLE_SYNC_TEST(mpsc_empty_queue_recv_returns_empty_error) {
     auto [sender, receiver] = mpsc<int>::queue();
 
     auto val = receiver.recv();
-    JUNGLE_SYNC_ASSERT(!val.has_value(), "recv on empty queue should return nullopt");
+    JUNGLE_SYNC_ASSERT(val.error() == receive_failed::empty, "recv on empty queue should return empty error");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -241,7 +242,7 @@ JUNGLE_SYNC_TEST(mpsc_interleaved_send_recv) {
     JUNGLE_SYNC_ASSERT(v4.has_value() && *v4 == 4, "recv 4");
 
     auto v5 = receiver.recv();
-    JUNGLE_SYNC_ASSERT(!v5.has_value(), "recv after drain should return nullopt");
+    JUNGLE_SYNC_ASSERT(v5.error() == receive_failed::empty, "recv after drain should return empty error");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -312,7 +313,7 @@ JUNGLE_SYNC_TEST(mpsc_repeated_empty_recv) {
 
     for (int i = 0; i < 5; ++i) {
         auto val = receiver.recv();
-        JUNGLE_SYNC_ASSERT(!val.has_value(), "repeated recv on empty queue should always return nullopt");
+        JUNGLE_SYNC_ASSERT(val.error() == receive_failed::empty, "repeated recv on empty queue should always return empty error");
     }
 
     JUNGLE_SYNC_ASSERT(sender.send(1), "send after repeated empty recvs should succeed");

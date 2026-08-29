@@ -14,6 +14,7 @@
 
 using namespace jungle;
 using namespace jungle::sync;
+using jungle::container::receive_failed;
 
 JUNGLE_SYNC_TEST(channel_creates_valid_sender_and_receiver) {
     auto [sender, receiver] = mpsc<int>::channel();
@@ -47,11 +48,11 @@ JUNGLE_SYNC_TEST(try_send_and_try_recv_round_trip) {
     JUNGLE_SYNC_SUCCESS();
 }
 
-JUNGLE_SYNC_TEST(try_recv_on_empty_returns_nullopt) {
+JUNGLE_SYNC_TEST(try_recv_on_empty_returns_empty_error) {
     auto [sender, receiver] = mpsc<int>::channel();
 
     auto val = receiver.try_recv();
-    JUNGLE_SYNC_ASSERT(!val.has_value(), "空队列 try_recv 应返回 nullopt");
+    JUNGLE_SYNC_ASSERT(val.error() == receive_failed::empty, "空队列 try_recv 应返回 empty 错误");
     JUNGLE_SYNC_SUCCESS();
 }
 

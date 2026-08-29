@@ -35,13 +35,13 @@ class condition_variable {
             }
         }
 
-        void await_suspend(std::coroutine_handle<> handle) {
+        bool await_suspend(std::coroutine_handle<> handle) {
             auto g = m_cv.m_suspend_lock.lock();
             awake_token tk{};
             if constexpr (!std::is_void_v<Fn>) {
                 m_pred_result = (*m_pred)();
                 if (m_pred_result) {
-                    return;
+                    return false;
                 }
             }
             tk.suspend(handle);
@@ -51,6 +51,7 @@ class condition_variable {
                 auto guard = condition_variable::s_parking_lot.read();
                 guard->get(&m_cv)->push_back(tk);
             }
+            return true;
         }
 
         std::conditional_t<std::is_void_v<Fn>, void, bool> await_resume() const {

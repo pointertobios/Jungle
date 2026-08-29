@@ -151,11 +151,8 @@ public:
         }
 
         value_type &operator*() const pre(validative_check() && end_check()) {
-            if (!(validative_check() && end_check())) {
-                panic("assertion failed: validative_check() && end_check()");
-            }  // TODO: workaround gcc contract bug for template function
             if (m_cache_valid) {
-                m_cache.destroy();
+                return *m_cache.get();
             }
             auto &sl = m_map->m_slots.at(m_index.value());
             if constexpr (std::is_void_v<V>) {
@@ -168,23 +165,19 @@ public:
         }
 
         iterator &operator++() pre(validative_check() && end_check()) {
-            if (!(validative_check() && end_check())) {
-                panic("assertion failed: validative_check() && end_check()");
-            }  // TODO: workaround gcc contract bug for template function
             m_index.value() += 1;
             m_counter += 1;
-
-            m_cache_valid = false;
+            if (m_cache_valid) {
+                m_cache.destroy();
+                m_cache_valid = false;
+            }
             next_filled();
             return *this;
         }
 
         iterator operator++(int) pre(validative_check() && end_check()) {
-            if (!(validative_check() && end_check())) {
-                panic("assertion failed: validative_check() && end_check()");
-            }  // TODO: workaround gcc contract bug for template function
             iterator res = *this;
-            (*this)++;
+            ++(*this);
             return res;
         }
 
@@ -249,18 +242,11 @@ public:
 
         bool operator==(const iterator &rhs) const
             pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
-            if (!(validative_check() && rhs.validative_check() && m_map == rhs.m_map)) {
-                panic("assertion failed: validative_check() && rhs.validative_check() && m_map == rhs.m_map");
-            }  // TODO: workaround gcc contract bug for template function
             return m_index == rhs.m_index;
         }
 
         friend difference_type operator-(const iterator &lhs, const iterator &rhs)
             pre(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map) {
-            if (!(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map)) {
-                panic(
-                    "assertion failed: lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map");
-            }  // TODO: workaround gcc contract bug for template function
             return static_cast<difference_type>(lhs.m_counter) - static_cast<difference_type>(rhs.m_counter);
         }
 
@@ -333,11 +319,8 @@ public:
         }
 
         const value_type &operator*() const pre(validative_check() && end_check()) {
-            if (!(validative_check() && end_check())) {
-                panic("assertion failed: validative_check() && end_check()");
-            }  // TODO: workaround gcc contract bug for template function
             if (m_cache_valid) {
-                m_cache.destroy();
+                return *m_cache.get();
             }
             auto &sl = m_map->m_slots.at(m_index.value());
             if constexpr (std::is_void_v<V>) {
@@ -350,22 +333,19 @@ public:
         }
 
         iterator_const &operator++() pre(validative_check() && end_check()) {
-            if (!(validative_check() && end_check())) {
-                panic("assertion failed: validative_check() && end_check()");
-            }  // TODO: workaround gcc contract bug for template function
             m_index.value() += 1;
             m_counter += 1;
-            m_cache_valid = false;
+            if (m_cache_valid) {
+                m_cache.destroy();
+                m_cache_valid = false;
+            }
             next_filled();
             return *this;
         }
 
         iterator_const operator++(int) pre(validative_check() && end_check()) {
-            if (!(validative_check() && end_check())) {
-                panic("assertion failed: validative_check() && end_check()");
-            }  // TODO: workaround gcc contract bug for template function
             iterator_const res = *this;
-            (*this)++;
+            ++(*this);
             return res;
         }
 
@@ -430,18 +410,11 @@ public:
 
         bool operator==(const iterator_const &rhs) const
             pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
-            if (!(validative_check() && rhs.validative_check() && m_map == rhs.m_map)) {
-                panic("assertion failed: validative_check() && rhs.validative_check() && m_map == rhs.m_map");
-            }  // TODO: workaround gcc contract bug for template function
             return m_index == rhs.m_index;
         }
 
         friend difference_type operator-(const iterator_const &lhs, const iterator_const &rhs)
             pre(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map) {
-            if (!(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map)) {
-                panic(
-                    "assertion failed: lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map");
-            }  // TODO: workaround gcc contract bug for template function
             return static_cast<difference_type>(lhs.m_counter) - static_cast<difference_type>(rhs.m_counter);
         }
 
@@ -590,7 +563,9 @@ public:
         return insert(key, std::monostate{});
     }
 
-    std::optional<fuck_void<V>> remove(const K &key) {
+    std::optional<fuck_void<V>> remove(const K &key)
+        requires(is_try_movable_v<fuck_void<V>>)
+    {
         usize size = m_slots.size();
         usize index = m_hasher(key);
         usize step = probe_step(index, size);
@@ -609,7 +584,7 @@ public:
                 }
 
                 if constexpr (concepts::non_void<V>) {
-                    std::optional<V> res = std::move(*s.value.get());
+                    std::optional<V> res{std::move(*s.value.get())};
                     s.st = slot::state::tombstone;
                     s.value.destroy();
                     m_load -= 1;
@@ -626,6 +601,42 @@ public:
         }
 
         return std::nullopt;
+    }
+
+    bool remove(const K &key)
+        requires(!is_try_movable_v<fuck_void<V>>)
+    {
+        usize size = m_slots.size();
+        usize index = m_hasher(key);
+        usize step = probe_step(index, size);
+        index %= size;
+
+        for (usize i = 0; i < size; ++i) {
+            slot &s = m_slots[probe_index(index, step, size, i)];
+
+            switch (s.st) {
+            case slot::state::empty: {
+                return false;
+            }
+            case slot::state::filled: {
+                if (s.key != key) {
+                    continue;
+                }
+
+                s.st = slot::state::tombstone;
+                if constexpr (concepts::non_void<V>) {
+                    s.value.destroy();
+                } else {
+                    s.st = slot::state::tombstone;
+                }
+                m_load -= 1;
+                m_generation += 1;
+                return true;
+            } break;
+            }
+        }
+
+        return false;
     }
 
     V *get(const K &key) {
@@ -702,30 +713,45 @@ private:
         usize step = probe_step(index, size);
         index %= size;
 
+        std::optional<usize> insert_location;
+
         for (usize i = 0; i < size; ++i) {
-            slot &s = m_slots[probe_index(index, step, size, i)];
+            usize location = probe_index(index, step, size, i);
+            slot &s = m_slots[location];
 
             switch (s.st) {
-            case slot::state::tombstone:
-            case slot::state::empty: {
-                if constexpr (concepts::non_void<V>) {
-                    s.value.emplace(std::forward<Args>(args)...);
+            case slot::state::tombstone: {
+                if (!insert_location.has_value()) {
+                    insert_location = location;
                 }
-                s.key = key;
-
-                s.st = slot::state::filled;
-                m_load += 1;
-                return try_insert_result::succeeded;
-            }
+            } break;
+            case slot::state::empty: {
+                insert_location = location;
+            } break;
             case slot::state::filled: {
                 if (s.key == key) {
                     return try_insert_result::duplicated;
                 }
-            } break;
+            }
+            }
+
+            if (insert_location.has_value()) {
+                break;
             }
         }
+        if (!insert_location.has_value()) [[unlikely]] {
+            std::unreachable();
+        }
 
-        std::unreachable();
+        slot &s = m_slots[insert_location.value()];
+        if constexpr (concepts::non_void<V>) {
+            s.value.emplace(std::forward<Args>(args)...);
+        }
+        s.key = key;
+
+        s.st = slot::state::filled;
+        m_load += 1;
+        return try_insert_result::succeeded;
     }
 
     [[no_unique_address]] std::hash<K> m_hasher{};

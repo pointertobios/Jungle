@@ -43,8 +43,6 @@ private:
         std::source_location m_source_location;
 #endif
 
-        ~promise_base() { m_this_coroutine.destroy(); }
-
         std::suspend_always initial_suspend() { return {}; }
 
         void unhandled_exception() { panic("exception unsupported"); }
@@ -96,6 +94,12 @@ public:
 
     future() = default;
 
+    ~future() noexcept {
+        if (m_this_coroutine) {
+            m_this_coroutine.destroy();
+        }
+    }
+
     future(const future &) = delete;
     future &operator=(const future &) = delete;
 
@@ -105,6 +109,8 @@ public:
             , m_this_coroutine{rhs.m_this_coroutine}
             , m_waiter_coroutine{rhs.m_waiter_coroutine}
             , m_bound_invocable{std::move(rhs.m_bound_invocable)} {
+        rhs.m_this_coroutine = coroutine_handle{};
+
         m_promise->m_future = this;
     }
 
