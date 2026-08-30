@@ -5,6 +5,7 @@
 
 #include "jungle/core/ecs/component.h"
 #include "jungle/core/ecs/component_storage.h"
+#include "jungle/core/ecs/manager.h"
 #include "jungle/preusing.h"
 
 namespace jungle::core::component {
@@ -14,9 +15,11 @@ public:
     using Storage = ecs::DenseComponentStorage<Transform>;
 
 private:
-    vector3f m_position;
-    vector3f m_rotation;
-    vector3f m_scale;
+    vector3f position;
+    vector3f rotation;
+    vector3f scale;
 };
+
+jungle_core_ecs_register_component(Transform);
 
 };  // namespace jungle::core::component

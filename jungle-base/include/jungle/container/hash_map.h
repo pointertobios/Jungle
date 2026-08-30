@@ -691,6 +691,8 @@ public:
         return nullptr;
     }
 
+    bool contains(const K &key) const { return get(key); }
+
 private:
     static usize probe_step(usize index, usize size) {
         usize step = util::mix64(index) % size;

@@ -5,6 +5,7 @@
 
 #include <concepts>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "jungle/core/ecs/component.h"
@@ -20,11 +21,18 @@ class Manager;
 template<typename M>
 concept ComponentManager = std::derived_from<M, Manager<>> && !std::is_same_v<M, Manager<>>;
 
+using ManagerCreator = std::unique_ptr<Manager<>> (*)();
+
 template<>
 class Manager<> : public util::type_mutate<Manager<>> {
 public:
     template<typename C>
     static constexpr bool static_mutatable = ComponentManager<C>;
+
+    template<ComponentImpl C>
+    static ManagerCreator get_manager_creator() {
+        return m_creators_of_component.get(type_id::of<C>());
+    }
 
     virtual std::vector<std::reference_wrapper<Component<>>> vget_components() = 0;
     virtual std::vector<std::reference_wrapper<const Component<>>> vget_components() const = 0;
@@ -35,11 +43,23 @@ public:
 protected:
     constexpr Manager(type_id type)
             : util::type_mutate<Manager<>>{type} {}
+
+    static void reigster_manager_creator(type_id type, ManagerCreator creator) {
+        m_creators_of_component.insert(type, creator);
+    }
+
+    inline static hash_map<type_id, ManagerCreator> m_creators_of_component{};
 };
 
 template<ComponentImpl C>
 class Manager<C> final : public Manager<> {
 public:
+    static ManagerCreator register_creator() {
+        auto crtor = +[] -> std::unique_ptr<Manager<>> { return std::make_unique<Manager>(); };
+        Manager<>::reigster_manager_creator(type_id::of<C>(), crtor);
+        return crtor;
+    }
+
     constexpr Manager()
             : Manager<>{type_id::of<Manager<C>>()} {}
 
@@ -94,5 +114,11 @@ public:
 private:
     C::Storage m_storage;
 };
+
+#define jungle_core_ecs_register_component(comp_impl)                    \
+    namespace __registration_of_##comp_impl {                            \
+        inline ::jungle::core::ecs::ManagerCreator creator =             \
+            ::jungle::core::ecs::Manager<comp_impl>::register_creator(); \
+    }
 
 };  // namespace jungle::core::ecs

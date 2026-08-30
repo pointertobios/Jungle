@@ -14,44 +14,34 @@
 
 namespace jungle::core {
 
-template<ecs::ComponentImpl... Cs>
-class Managers {
-    template<ecs::ComponentManager M>
-    static consteval bool has_manager() {
-        return (std::is_same_v<M, ecs::Manager<Cs>> || ...);
-    }
-
-public:
-    Managers() {
-        (m_managers.emplace(type_id::of<ecs::Manager<Cs>>(), std::make_unique<ecs::Manager<Cs>>()), ...);
-    }
-
-    auto get_managers() const { return m_managers.view(); }
-
-    template<ecs::ComponentManager M>
-        requires(has_manager<M>())
-    M &get_manager() {
-        return *m_managers.get(type_id::of<M>());
-    }
-
-    template<ecs::ComponentImpl C>
-        requires(has_manager<ecs::Manager<C>>())
-    ecs::Manager<C> &get_manager_of_component() {
-        return *m_managers.get(type_id::of<ecs::Manager<C>>());
-    }
-
-private:
-    hash_map<type_id, std::unique_ptr<ecs::Manager<>>> m_managers;
-};
-
 class Level {
 public:
     Level() = default;
 
-    auto &managers() { return m_managers; }
+    auto get_managers() const { return m_managers.view(); }
+
+    template<ecs::ComponentManager M>
+    bool has_manager() const {
+        return m_managers.contains(type_id::of<M>());
+    }
+
+    bool has_manager(type_id type) const { return m_managers.contains(type); }
+
+    template<ecs::ComponentManager M>
+    M &get_manager() pre(has_manager<M>()) {
+        return m_managers.get(type_id::of<M>())->template as<M>();
+    }
+
+    ecs::Manager<> &get_manager(type_id type) pre(has_manager(type)) { return **m_managers.get(type); }
+
+    template<ecs::ComponentImpl C>
+        requires(has_manager<ecs::Manager<C>>())
+    ecs::Manager<C> &get_manager_of_component() {
+        return static_cast<ecs::Manager<C>>(**m_managers.get(type_id::of<ecs::Manager<C>>()));
+    }
 
 private:
-    Managers<component::Transform, component::Motion> m_managers;
+    hash_map<type_id, std::unique_ptr<ecs::Manager<>>> m_managers;
 };
 
 };  // namespace jungle::core

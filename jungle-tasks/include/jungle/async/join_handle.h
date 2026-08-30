@@ -153,6 +153,8 @@ public:
     }
 
     T await_resume() pre(!is_empty()) {
+        (void)m_task_block->m_state.load(morder::acquire);
+
         if constexpr (concepts::is_void<T>) {
             return;
         } else {

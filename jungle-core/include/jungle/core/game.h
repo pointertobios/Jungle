@@ -5,14 +5,17 @@
 
 #include <memory>
 
+#include "jungle/async/future.h"
+#include "jungle/core/asset/asset_id.h"
 #include "jungle/core/level.h"
 
 namespace jungle::core {
 
 class Game {
 public:
-private:
-    std::unique_ptr<Level> m_level{std::make_unique<Level>()};
+    Game(AssetID initial_level);
+
+    async::future<> run();
 };
 
 };  // namespace jungle::core
