@@ -69,7 +69,7 @@ async::future<> async_test() {
 }
 
 int main() {
-    std::println("build id: {}<{:016x}>", build_id_string(), build_id());
+    std::println("build id: {}<{:032x}>", build_id_string(), build_id());
 
     using core::ecs::Entity;
     Entity entity{0x123456789abcdef0};

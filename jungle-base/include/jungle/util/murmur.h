@@ -12,8 +12,6 @@
 
 namespace jungle::util {
 
-using hash_val = std::array<u64, 2>;
-
 inline constexpr u64 mix64(u64 x) {
     x ^= x >> 33;
     x *= 0xff51afd7ed558ccd;
@@ -31,7 +29,7 @@ inline constexpr u64 concat64le(const char *source, usize nbytes) {
     return result;
 }
 
-inline constexpr hash_val hash_str(std::string_view str) {
+inline constexpr u128 hash_str(std::string_view str) {
     u64 len = str.size();
 
     constexpr u64 c1 = 0x87c37b91114253d5;
@@ -77,7 +75,7 @@ inline constexpr hash_val hash_str(std::string_view str) {
     h1 += h2;
     h2 += h1;
 
-    return {h1, h2};
+    return h1 + (static_cast<u128>(h2) << 64);
 }
 
 };  // namespace jungle::util

@@ -8,7 +8,7 @@
 
 namespace jungle {
 
-u64 build_id();
+u128 build_id();
 const ustr &build_id_string();
 
 };  // namespace jungle

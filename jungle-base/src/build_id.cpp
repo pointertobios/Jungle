@@ -6,10 +6,10 @@
 
 namespace jungle {
 
-u64 build_id() {
-    static u64 id{[] {
+u128 build_id() {
+    static u128 id{[] {
         auto val = util::hash_str(build_id_string().view());
-        return val[0] ^ val[1];
+        return val;
     }()};
     return id;
 }

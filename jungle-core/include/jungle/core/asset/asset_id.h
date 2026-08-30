@@ -7,12 +7,12 @@
 
 #include "jungle/preusing.h"
 
-namespace jungle::core::asset {
+namespace jungle::core {
 
 class AssetID {
     friend struct std::hash<AssetID>;
 
-    static constexpr std::array<u64, 2> NONE{0, 0};
+    static constexpr u128 NONE = 0;
 
 public:
     constexpr AssetID() = default;
@@ -27,14 +27,14 @@ public:
     ustr debug() const;
 
 private:
-    std::array<u64, 2> m_id{0, 0};
+    u128 m_id{0};
 };
 
-};  // namespace jungle::core::asset
+};  // namespace jungle::core
 
 template<>
-struct std::hash<jungle::core::asset::AssetID> {
-    std::size_t operator()(const jungle::core::asset::AssetID &id) const {
-        return id.m_id[0] ^ (id.m_id[1] << 1);
+struct std::hash<jungle::core::AssetID> {
+    std::size_t operator()(const jungle::core::AssetID &id) const {
+        return static_cast<std::size_t>(id.m_id) ^ (static_cast<std::size_t>(id.m_id >> 64) << 1);
     }
 };
