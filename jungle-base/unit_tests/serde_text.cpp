@@ -63,9 +63,9 @@ template<typename T>
 struct serde_text_test_plus_thousand {
     void serialize(const T &value, auto &target) const { target.serialize_integral(value + 1000); }
     template<typename U>
-    U deserialize(U &value, auto &source) const {
+    void deserialize(U &value, auto &source) const {
         source.template deserialize_integral<U>(value);
-        return value - 1000;
+        value = value - 1000;
     }
 };
 

@@ -42,13 +42,19 @@ public:
     bool deserialize_bool(bool &) { return {}; }
 
     template<std::integral I>
-    bool deserialize_integral(I &) { return {}; }
+    bool deserialize_integral(I &) {
+        return {};
+    }
 
     template<std::floating_point F>
-    bool deserialize_floating_point(F &) { return {}; }
+    bool deserialize_floating_point(F &) {
+        return {};
+    }
 
     template<concepts::is_enum E>
-    bool deserialize_enum(E &) { return {}; }
+    bool deserialize_enum(E &) {
+        return {};
+    }
 
     bool deserialize_optional_nonnull() { return {}; }
     bool deserialize_optional_nullopt() { return {}; }
@@ -92,7 +98,7 @@ template<template<typename> typename Custr>
 concept Customizer = std::is_default_constructible_v<Custr<int>>
                      && requires(Custr<int> customizer, int value, detail::TraitTargetSource &target) {
                             { customizer.serialize(value, target) } -> std::same_as<void>;
-                            { customizer.deserialize(value, target) } -> std::same_as<int>;
+                            { customizer.deserialize(value, target) } -> std::same_as<void>;
                         };
 
 template<template<typename> typename Custr>

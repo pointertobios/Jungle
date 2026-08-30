@@ -169,7 +169,7 @@ public:
                         constexpr auto customizer_type =
                             std::meta::substitute(customizer, {std::meta::type_of(m)});
                         typename[:customizer_type:] customizer_instance{};
-                        value.[:m:] = customizer_instance.deserialize(value.[:m:], subsource);
+                        customizer_instance.deserialize(value.[:m:], subsource);
                     } else {
                         deserialize(subsource, value.[:m:]);
                     }
