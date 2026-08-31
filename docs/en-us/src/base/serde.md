@@ -83,67 +83,73 @@ Reflection uses `std::meta::access_context::unchecked()` to access private membe
 
 ```cpp
 // Construct a new value from payload (T must be default_constructible)
-// Returns optional containing the value on success, nullopt on failure
+// Returns the value on success, unexpected(Source::error_type) on failure
 template<typename T, DeserializeSourceImpl Source>
   requires std::is_default_constructible_v<T>
-std::optional<T> deserialize(const typename Source::source_type &source_payload);
+std::expected<T, typename Source::error_type>
+deserialize(const typename Source::source_type &source_payload);
 
-// Write from payload into an existing variable, returns success status
+// Write from payload into an existing variable
 template<typename T, DeserializeSourceImpl Source>
-[[nodiscard]] bool deserialize(const typename Source::source_type &source_payload, T &value);
+[[nodiscard]] std::expected<void, typename Source::error_type>
+deserialize(const typename Source::source_type &source_payload, T &value);
 
-// Operate directly on a source, writing into an existing variable, returns success status
+// Operate directly on a source, writing into an existing variable
 template<typename T, DeserializeSourceImpl Source>
-[[nodiscard]] bool deserialize(Source &source, T &value);
+[[nodiscard]] std::expected<void, typename Source::error_type>
+deserialize(Source &source, T &value);
 ```
 
-All deserialization operations indicate success/failure via `bool` return values or `std::optional`. The caller is responsible for checking the return value.
+All deserialization operations indicate success/failure via `std::expected`: overloads that write into an existing variable return `expected<void, Source::error_type>`, and the overload that constructs a new value returns `expected<T, Source::error_type>`. Errors propagate from `deserialize_*` up to these free functions. The caller is responsible for checking the return value.
 
 #### DeserializeSource Base Class
 
 All Sources must inherit from `DeserializeSource<Source>` (CRTP) and satisfy the `DeserializeSourceImpl` concept:
 
 - Define `source_type` (the raw input type)
+- Define `error_type` (the error type reported on deserialization failure)
 - Implement `provide_source(const source_type &) -> void`
 - Implement `spawn_subsource() -> Source`
-- Implement `deserialize_*` methods for each type; all methods return `bool`
+- Implement `deserialize_*` methods for each type; all methods return `std::expected<void, error_type>`
 
-Template methods provided by the `DeserializeSource` base class and their requires constraints:
+Template methods provided by the `DeserializeSource` base class and their requires constraints (`E` stands for `Source::error_type`):
 
-| Base Class Method                           | Called Derived Class Methods                                                                                                                                 |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `deserialize_bool(bool &) -> bool`          | `deserialize_bool(bool &) -> bool`                                                                                                                           |
-| `deserialize_integral(I &) -> bool`         | `deserialize_integral(I &) -> bool`                                                                                                                          |
-| `deserialize_floating_point(F &) -> bool`   | `deserialize_floating_point(F &) -> bool`                                                                                                                    |
-| `deserialize_enum(T &) -> bool`             | `deserialize_enum(T &) -> bool`                                                                                                                              |
-| `deserialize_optional(OptionalT &) -> bool` | `deserialize_optional_nonnull() -> bool`, `deserialize_optional_nullopt() -> bool`                                                                           |
-| `deserialize_range(R &) -> bool`            | `deserialize_range_head() -> bool`, `deserialize_range_has_element() -> bool`, `deserialize_range_element_end() -> bool`, `deserialize_range_tail() -> bool` |
-| `deserialize_class_object(T &) -> bool`     | `deserialize_class_head() -> bool`, `deserialize_class_field() -> bool`, `deserialize_class_field_end() -> bool`, `deserialize_class_tail() -> bool`         |
+| Base Class Method                                              | Called Derived Class Methods                                                                                                                                                                                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `deserialize_bool(bool &) -> expected<void, E>`                | `deserialize_bool(bool &) -> expected<void, E>`                                                                                                                                                                                      |
+| `deserialize_integral(I &) -> expected<void, E>`               | `deserialize_integral(I &) -> expected<void, E>`                                                                                                                                                                                     |
+| `deserialize_floating_point(F &) -> expected<void, E>`         | `deserialize_floating_point(F &) -> expected<void, E>`                                                                                                                                                                               |
+| `deserialize_enum(T &) -> expected<void, E>`                   | `deserialize_enum(T &) -> expected<void, E>`                                                                                                                                                                                         |
+| `deserialize_optional(OptionalT &) -> expected<void, E>`       | `deserialize_optional_nonnull() -> expected<void, E>`, `deserialize_optional_nullopt() -> expected<void, E>`                                                                                                                         |
+| `deserialize_range(R &) -> expected<void, E>`                  | `deserialize_range_head() -> expected<void, E>`, `deserialize_range_has_element() -> expected<void, E>`, `deserialize_range_element_end() -> expected<void, E>`, `deserialize_range_tail() -> expected<void, E>`                     |
+| `deserialize_class_object(T &) -> expected<void, E>`           | `deserialize_class_head() -> expected<void, E>`, `deserialize_class_field() -> expected<void, E>`, `deserialize_class_field_end() -> expected<void, E>`, `deserialize_class_tail() -> expected<void, E>`                             |
 
-> Unlike serialization, all deserialization structural methods (`head`, `field`, `element_end`, etc.) return `bool` rather than `void`. When an illegal format is encountered, they can return `false` to allow the upper layer to roll back or report an error, rather than terminating the process via panic.
+> Unlike serialization, all deserialization structural methods (`head`, `field`, `element_end`, etc.) return `expected<void, E>` rather than `void`. When an illegal format is encountered, they can return `unexpected` to allow the upper layer to roll back or report an error, rather than terminating the process via panic.
+>
+> `deserialize_optional_nonnull` / `deserialize_optional_nullopt` and `deserialize_range_has_element` use success to mean "this case matched / more elements remain", and `unexpected` to mean "this case did not match / no more elements". The base class propagates the latter error when both optional paths fail; for ranges, a failed `has_element` ends the loop and parsing continues at the tail.
 
 #### Range Deserialization Flow
 
 ```
-if (!deserialize_range_head()) return false;         → abort on failure
-while deserialize_range_has_element():
+if (auto r = deserialize_range_head(); !r) return r;   → abort and propagate on failure
+while deserialize_range_has_element() succeeds:
     spawn_subsource() → create child source
-    deserialize(subsource, elem) → recursively deserialize element (return value ignored; correctness guaranteed by parent source's structural methods)
-    if (!deserialize_range_element_end()) return false;
-if (!deserialize_range_tail()) return false;
+    if (auto r = deserialize(subsource, elem); !r) return r;  → recursively deserialize element
+    if (auto r = deserialize_range_element_end(); !r) return r;
+if (auto r = deserialize_range_tail(); !r) return r;
 ```
 
 #### Class Deserialization Flow
 
-Symmetric with serialization, but `deserialize_class_head()` and `deserialize_class_field()` only return `bool` (success/failure), not the parsed type name/field name — these strings serve only as validation in deserialization, with failure handling unified by the base class control flow.
+Symmetric with serialization, but `deserialize_class_head()` and `deserialize_class_field()` only return `expected<void, E>` (success/failure), not the parsed type name/field name — these strings serve only as validation in deserialization, with failure handling unified by the base class control flow.
 
-Customizer invocation:
+The customizer receives a member reference and a child source, writes into the member in place, and returns `expected`; the base class checks that result and propagates it:
 
 ```cpp
-value.[:m:] = customizer_instance.deserialize(value.[:m:], subsource);
+if (auto r = customizer_instance.deserialize(value.[:m:], subsource); !r) {
+    return r;
+}
 ```
-
-The customizer receives a member reference and a child source, and is responsible for reading and returning the transformed value.
 
 ---
 
@@ -175,16 +181,17 @@ concept Customizer =
   std::is_default_constructible_v<Custr<int>> &&
   requires(Custr<int> c, int value, detail::TraitTargetSource &target) {
     { c.serialize(value, target) }      -> std::same_as<void>;
-    { c.deserialize(value, target) }    -> std::same_as<int>;
+    { c.deserialize(value, target) }
+      -> std::same_as<std::expected<void, typename detail::TraitTargetSource::error_type>>;
   };
 ```
 
 A customizer is a **single-parameter template**: `template<typename T> struct MyCustomizer { ... }`. The framework instantiates `MyCustomizer<FieldType>` for each field that uses the customizer.
 
-- `serialize(const T &value, auto &target)`: writes `value` to `target` after transformation
-- `deserialize(T &value, auto &source)`: reads the raw value from `source` into `value`, returns the transformed value
+- `serialize(const T &value, auto &target)`: writes `value` to `target` after transformation, returns `void`
+- `deserialize(T &value, auto &source)`: reads the raw value from `source` into `value` and writes the transformed value in place, returning `std::expected<void, typename Source::error_type>`
 
-The customizer's `deserialize` return type should match the field type.
+`deserialize` must propagate errors from the `deserialize_*` calls it delegates to; the framework checks that return value and continues propagating it.
 
 ---
 
@@ -258,6 +265,7 @@ Key design points:
 class TextSource : public DeserializeSource<TextSource> {
 public:
     using source_type = ustr;
+    enum class error_type { mismatch };
 
     TextSource() = default;
     void provide_source(const source_type &source) {
@@ -266,24 +274,24 @@ public:
     }
     TextSource spawn_subsource() { return TextSource{m_source, m_cursor}; }
 
-    bool deserialize_bool(bool &value) { /* parse "true"/"false", write to value, return success */ }
+    std::expected<void, error_type> deserialize_bool(bool &value) { /* parse "true"/"false" */ }
     template<std::integral I>
-    bool deserialize_integral(I &value) { /* from_chars parse, return success */ }
+    std::expected<void, error_type> deserialize_integral(I &value) { /* from_chars parse */ }
     template<std::floating_point F>
-    bool deserialize_floating_point(F &value) { /* from_chars parse, return success */ }
+    std::expected<void, error_type> deserialize_floating_point(F &value) { /* from_chars parse */ }
     template<concepts::is_enum E>
-    bool deserialize_enum(E &value) { /* match enum item by name, return success */ }
+    std::expected<void, error_type> deserialize_enum(E &value) { /* match enum item by name */ }
 
-    bool deserialize_optional_nonnull() { /* consume "optional##", return true if not "nullopt" */ }
-    bool deserialize_optional_nullopt() { /* consume "nullopt", return success */ }
-    bool deserialize_range_head()        { /* consume "[" */ }
-    bool deserialize_range_has_element() { /* check if next char is "]" */ }
-    bool deserialize_range_element_end() { /* consume "," */ }
-    bool deserialize_range_tail()        { /* consume "]" */ }
-    bool deserialize_class_head()        { /* consume "TypeName{" */ }
-    bool deserialize_class_field()       { /* consume "fieldName:" */ }
-    bool deserialize_class_field_end()   { /* consume "," */ }
-    bool deserialize_class_tail()        { /* consume "}" */ }
+    std::expected<void, error_type> deserialize_optional_nonnull() { /* consume "optional##"; succeed if not "nullopt" */ }
+    std::expected<void, error_type> deserialize_optional_nullopt() { /* consume "nullopt" */ }
+    std::expected<void, error_type> deserialize_range_head()        { /* consume "[" */ }
+    std::expected<void, error_type> deserialize_range_has_element() { /* check if next char is "]" */ }
+    std::expected<void, error_type> deserialize_range_element_end() { /* consume "," */ }
+    std::expected<void, error_type> deserialize_range_tail()        { /* consume "]" */ }
+    std::expected<void, error_type> deserialize_class_head()        { /* consume "TypeName{" */ }
+    std::expected<void, error_type> deserialize_class_field()       { /* consume "fieldName:" */ }
+    std::expected<void, error_type> deserialize_class_field_end()   { /* consume "," */ }
+    std::expected<void, error_type> deserialize_class_tail()        { /* consume "}" */ }
 
 private:
     TextSource(std::string_view source, usize *cursor)
@@ -297,10 +305,10 @@ static_assert(DeserializeSourceImpl<TextSource>);
 ```
 
 Key design points:
-- All methods return `bool`: return `true` on successful parse, `false` on format mismatch (no panic)
+- All methods return `std::expected<void, error_type>`: return `{}` on successful parse, `unexpected` on format mismatch (no panic)
 - `spawn_subsource()` shares a cursor: child source reads automatically advance the parent source's position
-- `deserialize_optional_nonnull()` consumes the `"optional##"` prefix then only peeks (does not consume) `"nullopt"`; if it is indeed nullopt, returns `false` and `deserialize_optional_nullopt()` consumes it
-- `deserialize_class_head()` and `deserialize_class_field()` only return `bool`, not the parsed type name/field name — these values are unused on the deserialization path
+- `deserialize_optional_nonnull()` consumes the `"optional##"` prefix then only peeks (does not consume) `"nullopt"`; if it is indeed nullopt, returns `unexpected` and `deserialize_optional_nullopt()` consumes it
+- `deserialize_class_head()` and `deserialize_class_field()` only return `expected<void, error_type>`, not the parsed type name/field name — these values are unused on the deserialization path
 
 ### Implementing a Customizer
 
@@ -312,10 +320,13 @@ struct PlusThousand {
     void serialize(const T &value, auto &target) const {
         target.serialize_integral(value + 1000);
     }
-    template<typename U>
-    U deserialize(U &value, auto &source) const {
-        source.template deserialize_integral<U>(value);
-        return value - 1000;
+    auto deserialize(T &value, auto &source) const
+        -> std::expected<void, typename std::remove_cvref_t<decltype(source)>::error_type> {
+        if (auto r = source.template deserialize_integral<T>(value); !r) {
+            return r;
+        }
+        value -= 1000;
+        return {};
     }
 };
 
@@ -333,8 +344,8 @@ struct S {
 A customizer must satisfy:
 - It is a single-parameter template (`template<typename> struct`)
 - `serialize` receives `const T &` and a target reference, returns `void`
-- `deserialize` receives `T &` and a source reference, returns `T` (the transformed value)
-- `deserialize` internally calls the source's value-writing method (e.g., `deserialize_integral`) to obtain the raw value
+- `deserialize` receives `T &` and a source reference, returns `std::expected<void, typename Source::error_type>`, and updates the value in place
+- `deserialize` internally calls the source's value-writing method (e.g., `deserialize_integral`) to obtain the raw value, and propagates that error unchanged
 
 ### Usage Examples
 
@@ -342,18 +353,18 @@ A customizer must satisfy:
 // Serialization
 ustr text = serialize<TextTarget>(my_object);
 
-// Deserialization (construct new value, returns optional)
+// Deserialization (construct new value, returns expected<T, error_type>)
 auto result = deserialize<MyStruct, TextSource>(text);
 if (result.has_value()) {
     // use *result
 }
 
-// Deserialization (write into existing variable, returns bool)
+// Deserialization (write into existing variable, returns expected<void, error_type>)
 MyStruct obj;
-bool ok = deserialize<MyStruct, TextSource>(text, obj);
+auto ok = deserialize<MyStruct, TextSource>(text, obj);
 
 // Deserialization (operate directly on source)
 TextSource src;
 src.provide_source(text);
-bool ok = deserialize(src, obj);
+auto ok = deserialize(src, obj);
 ```

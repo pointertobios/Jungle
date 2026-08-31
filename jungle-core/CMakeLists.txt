@@ -5,6 +5,7 @@ set(IPREF "include/jungle/core") # Include prefix for headers
 
 set(JUNGLE_HEADERS
     ${IPREF}/asset/asset_id.h
+    ${IPREF}/asset/serde_jaml.h
     ${IPREF}/component/transform.h
     ${IPREF}/component/motion.h
     ${IPREF}/ecs/component_storage.h
@@ -17,6 +18,7 @@ set(JUNGLE_HEADERS
 
 set(JUNGLE_SOURCES
     src/asset/asset_id.cpp
+    src/asset/serde_jaml.cpp
     src/ecs/component.cpp
     src/ecs/entity.cpp
     src/game.cpp
@@ -33,6 +35,7 @@ add_library(jungle::core ALIAS jungle-core)
 set(JUNGLE_UNIT_TEST_SOURCES
     unit_tests/component.cpp
     unit_tests/manager.cpp
+    unit_tests/serde_jaml.cpp
 )
 
 add_executable(jungle-core-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})

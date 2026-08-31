@@ -4,6 +4,7 @@
 #pragma once
 
 #include <concepts>
+#include <expected>
 #include <type_traits>
 
 namespace jungle::serde {
@@ -13,6 +14,7 @@ namespace detail {
 class TraitTargetSource {
 public:
     using result_type = bool;
+    enum class error_type { mismatch };
 
     bool deliver_result() { return false; }
 
@@ -39,35 +41,35 @@ public:
     void serialize_class_field_end() {}
     void serialize_class_tail(std::string_view) {}
 
-    bool deserialize_bool(bool &) { return {}; }
+    std::expected<void, error_type> deserialize_bool(bool &) { return {}; }
 
     template<std::integral I>
-    bool deserialize_integral(I &) {
+    std::expected<void, error_type> deserialize_integral(I &) {
         return {};
     }
 
     template<std::floating_point F>
-    bool deserialize_floating_point(F &) {
+    std::expected<void, error_type> deserialize_floating_point(F &) {
         return {};
     }
 
     template<concepts::is_enum E>
-    bool deserialize_enum(E &) {
+    std::expected<void, error_type> deserialize_enum(E &) {
         return {};
     }
 
-    bool deserialize_optional_nonnull() { return {}; }
-    bool deserialize_optional_nullopt() { return {}; }
+    std::expected<void, error_type> deserialize_optional_nonnull() { return {}; }
+    std::expected<void, error_type> deserialize_optional_nullopt() { return {}; }
 
-    bool deserialize_range_head() { return {}; }
-    bool deserialize_range_has_element() { return {}; }
-    bool deserialize_range_element_end() { return {}; }
-    bool deserialize_range_tail() { return {}; }
+    std::expected<void, error_type> deserialize_range_head() { return {}; }
+    std::expected<void, error_type> deserialize_range_has_element() { return {}; }
+    std::expected<void, error_type> deserialize_range_element_end() { return {}; }
+    std::expected<void, error_type> deserialize_range_tail() { return {}; }
 
-    bool deserialize_class_head() { return {}; }
-    bool deserialize_class_field() { return {}; }
-    bool deserialize_class_field_end() { return {}; }
-    bool deserialize_class_tail() { return {}; }
+    std::expected<void, error_type> deserialize_class_head() { return {}; }
+    std::expected<void, error_type> deserialize_class_field() { return {}; }
+    std::expected<void, error_type> deserialize_class_field_end() { return {}; }
+    std::expected<void, error_type> deserialize_class_tail() { return {}; }
 };
 
 };  // namespace detail
@@ -91,6 +93,7 @@ concept DeserializeSourceImpl =
     std::derived_from<T, DeserializeSource<T>> && !std::is_same_v<T, DeserializeSource<T>>
     && std::is_default_constructible_v<T> && requires(T t) {
            typename T::source_type;
+           typename T::error_type;
            { t.provide_source(std::declval<const typename T::source_type &>()) } -> std::same_as<void>;
        };
 
@@ -98,7 +101,8 @@ template<template<typename> typename Custr>
 concept Customizer = std::is_default_constructible_v<Custr<int>>
                      && requires(Custr<int> customizer, int value, detail::TraitTargetSource &target) {
                             { customizer.serialize(value, target) } -> std::same_as<void>;
-                            { customizer.deserialize(value, target) } -> std::same_as<void>;
+                            { customizer.deserialize(value, target) }
+                            -> std::same_as<std::expected<void, typename detail::TraitTargetSource::error_type>>;
                         };
 
 template<template<typename> typename Custr>

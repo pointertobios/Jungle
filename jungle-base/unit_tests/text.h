@@ -5,6 +5,7 @@
 
 #include <charconv>
 #include <cstddef>
+#include <expected>
 #include <optional>
 
 #include "jungle/debug.h"
@@ -74,6 +75,7 @@ static_assert(SerializeTargetImpl<TextTarget>);
 class TextSource : public DeserializeSource<TextSource> {
 public:
     using source_type = ustr;
+    enum class error_type { mismatch };
 
     TextSource() = default;
 
@@ -84,37 +86,38 @@ public:
 
     TextSource spawn_subsource() { return TextSource{m_source, m_cursor}; }
 
-    bool deserialize_bool(bool &value) {
+    std::expected<void, error_type> deserialize_bool(bool &value) {
         if (try_consume_kw("true")) {
             value = true;
-            return true;
+            return {};
         }
         if (try_consume_kw("false")) {
             value = false;
-            return true;
+            return {};
         }
-        return false;
+        return std::unexpected{error_type::mismatch};
     }
 
     template<std::integral I>
-    bool deserialize_integral(I &value) {
+    std::expected<void, error_type> deserialize_integral(I &value) {
         auto token = consume_number();
         auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), value);
-        return ec == std::errc{};
+        return result_from(ec == std::errc{});
     }
 
     template<std::floating_point F>
-    bool deserialize_floating_point(F &value) {
+    std::expected<void, error_type> deserialize_floating_point(F &value) {
         auto token = consume_number();
         auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), value);
-        return ec == std::errc{};
+        return result_from(ec == std::errc{});
     }
 
     template<concepts::is_enum E>
-    bool deserialize_enum(E &value) {
+    std::expected<void, error_type> deserialize_enum(E &value) {
         auto full_name = consume_value_token();
-        if (full_name.empty())
-            return false;
+        if (full_name.empty()) {
+            return std::unexpected{error_type::mismatch};
+        }
 
         auto colon_pos = full_name.rfind("::");
         std::string_view enumerator_name =
@@ -128,45 +131,62 @@ public:
                 found = true;
             }
         }
-        return found;
+        return result_from(found);
     }
 
-    bool deserialize_optional_nonnull() {
-        if (!try_consume_kw("optional##"))
-            return false;
-        if (peek_kw("nullopt"))
-            return false;
-        return true;
+    std::expected<void, error_type> deserialize_optional_nonnull() {
+        if (!try_consume_kw("optional##")) {
+            return std::unexpected{error_type::mismatch};
+        }
+        if (peek_kw("nullopt")) {
+            return std::unexpected{error_type::mismatch};
+        }
+        return {};
     }
 
-    bool deserialize_optional_nullopt() { return try_consume_kw("nullopt"); }
+    std::expected<void, error_type> deserialize_optional_nullopt() {
+        return result_from(try_consume_kw("nullopt"));
+    }
 
-    bool deserialize_range_head() { return try_consume_char('['); }
+    std::expected<void, error_type> deserialize_range_head() { return result_from(try_consume_char('[')); }
 
-    bool deserialize_range_has_element() { return !at_end() && current() != ']'; }
+    std::expected<void, error_type> deserialize_range_has_element() {
+        return result_from(!at_end() && current() != ']');
+    }
 
-    bool deserialize_range_element_end() { return try_consume_char(','); }
+    std::expected<void, error_type> deserialize_range_element_end() {
+        return result_from(try_consume_char(','));
+    }
 
-    bool deserialize_range_tail() { return try_consume_char(']'); }
+    std::expected<void, error_type> deserialize_range_tail() { return result_from(try_consume_char(']')); }
 
-    bool deserialize_class_head() {
+    std::expected<void, error_type> deserialize_class_head() {
         consume_until('{');
-        return try_consume_char('{');
+        return result_from(try_consume_char('{'));
     }
 
-    bool deserialize_class_field() {
+    std::expected<void, error_type> deserialize_class_field() {
         consume_until(':');
-        return try_consume_char(':');
+        return result_from(try_consume_char(':'));
     }
 
-    bool deserialize_class_field_end() { return try_consume_char(','); }
+    std::expected<void, error_type> deserialize_class_field_end() {
+        return result_from(try_consume_char(','));
+    }
 
-    bool deserialize_class_tail() { return try_consume_char('}'); }
+    std::expected<void, error_type> deserialize_class_tail() { return result_from(try_consume_char('}')); }
 
 private:
     TextSource(std::string_view source, usize *cursor)
             : m_source{source}
             , m_cursor{cursor} {}
+
+    std::expected<void, error_type> result_from(bool ok) const {
+        if (ok) {
+            return {};
+        }
+        return std::unexpected{error_type::mismatch};
+    }
 
     bool at_end() const { return *m_cursor >= m_source.size(); }
 

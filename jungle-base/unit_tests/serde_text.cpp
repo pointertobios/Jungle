@@ -5,16 +5,18 @@
 #include "jungle/test/test.h"
 #include "text.h"
 
-#define DESERIALIZE(T, text)                                                    \
-    (*[] {                                                                      \
-        auto _r = deserialize<T, TextSource>(ustr{text});                       \
-        JUNGLE_SYNC_ASSERT(_r.has_value(), "deserialization returned nullopt"); \
-        return _r;                                                              \
+#define DESERIALIZE(T, text)                                                  \
+    (*[] {                                                                    \
+        auto _r = deserialize<T, TextSource>(ustr{text});                     \
+        JUNGLE_SYNC_ASSERT(_r.has_value(), "deserialization returned error"); \
+        return _r;                                                            \
     }())
 
 #include <array>
+#include <expected>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -63,9 +65,13 @@ template<typename T>
 struct serde_text_test_plus_thousand {
     void serialize(const T &value, auto &target) const { target.serialize_integral(value + 1000); }
     template<typename U>
-    void deserialize(U &value, auto &source) const {
-        source.template deserialize_integral<U>(value);
+    auto deserialize(U &value, auto &source) const
+        -> std::expected<void, typename std::remove_cvref_t<decltype(source)>::error_type> {
+        if (auto r = source.template deserialize_integral<U>(value); !r) {
+            return r;
+        }
         value = value - 1000;
+        return {};
     }
 };
 
@@ -644,8 +650,8 @@ JUNGLE_SYNC_TEST(text_source_round_trip_reordered_fields) {
 
 JUNGLE_SYNC_TEST(text_source_deserialize_into_existing_value) {
     int value = 0;
-    bool ok = deserialize<int, TextSource>(ustr{"42"}, value);
-    JUNGLE_SYNC_ASSERT(ok, "deserialize should succeed");
+    auto ok = deserialize<int, TextSource>(ustr{"42"}, value);
+    JUNGLE_SYNC_ASSERT(ok.has_value(), "deserialize should succeed");
 
     JUNGLE_SYNC_ASSERT(value == 42, "deserialize(payload, value) should write into existing variable");
     JUNGLE_SYNC_SUCCESS();
@@ -655,8 +661,8 @@ JUNGLE_SYNC_TEST(text_source_deserialize_with_direct_source) {
     TextSource source;
     source.provide_source(ustr{"[1,2,3,]"});
     std::vector<int> value;
-    bool ok = deserialize(source, value);
-    JUNGLE_SYNC_ASSERT(ok, "direct source deserialize should succeed");
+    auto ok = deserialize(source, value);
+    JUNGLE_SYNC_ASSERT(ok.has_value(), "direct source deserialize should succeed");
 
     std::vector<int> expected{1, 2, 3};
     JUNGLE_SYNC_ASSERT(value == expected, "deserialize(source, value) should fill pre-constructed value");
@@ -665,8 +671,8 @@ JUNGLE_SYNC_TEST(text_source_deserialize_with_direct_source) {
 
 JUNGLE_SYNC_TEST(text_source_deserialize_overwrites_existing) {
     bool value = true;
-    bool ok = deserialize<bool, TextSource>(ustr{"false"}, value);
-    JUNGLE_SYNC_ASSERT(ok, "deserialize should succeed");
+    auto ok = deserialize<bool, TextSource>(ustr{"false"}, value);
+    JUNGLE_SYNC_ASSERT(ok.has_value(), "deserialize should succeed");
 
     JUNGLE_SYNC_ASSERT(value == false, "deserialize(payload, value) should overwrite existing bool");
     JUNGLE_SYNC_SUCCESS();
@@ -674,8 +680,8 @@ JUNGLE_SYNC_TEST(text_source_deserialize_overwrites_existing) {
 
 JUNGLE_SYNC_TEST(text_source_deserialize_optional_clears_existing) {
     std::optional<int> value{999};
-    bool ok = deserialize<std::optional<int>, TextSource>(ustr{"optional##nullopt"}, value);
-    JUNGLE_SYNC_ASSERT(ok, "deserialize should succeed");
+    auto ok = deserialize<std::optional<int>, TextSource>(ustr{"optional##nullopt"}, value);
+    JUNGLE_SYNC_ASSERT(ok.has_value(), "deserialize should succeed");
 
     JUNGLE_SYNC_ASSERT(!value.has_value(), "writing nullopt should clear existing optional value");
     JUNGLE_SYNC_SUCCESS();
