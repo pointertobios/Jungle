@@ -12,6 +12,7 @@
 #include "jungle/meta.h"
 #include "jungle/preusing.h"
 #include "jungle/tasks/runtime/runtime.h"
+#include "jungle/tasks/this_task.h"
 
 using namespace jungle;
 using namespace jungle::core::ecs;
@@ -58,7 +59,7 @@ using namespace literals;
 
 async::future<> async_test() {
     std::println("async function");
-    auto x = co_await tasks::spawn([] -> async::future<int> {
+    auto x = co_await this_task::spawn([] -> async::future<int> {
         std::println("sub task");
         co_return 42;
     });

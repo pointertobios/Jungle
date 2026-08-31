@@ -49,7 +49,7 @@ JUNGLE_ASYNC_TEST(void_lock_spins_until_acquired) {
     auto g1 = lock.try_lock();
     JUNGLE_ASYNC_ASSERT(g1, "主协程应先持有锁");
 
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         auto g = lock.lock();
         acquired = true;
         co_return;

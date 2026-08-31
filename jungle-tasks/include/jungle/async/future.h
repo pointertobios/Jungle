@@ -8,19 +8,23 @@
 #include <utility>
 
 #include "jungle/async/control.h"
+#include "jungle/async/future.h"
 #include "jungle/meta.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/raw_storage.h"
 
-#ifdef JUNGLE_DEBUG_ENABLED
-#    include "jungle/tasks/runtime/debug_host.h"
-#    include "jungle/tasks/runtime/worker.h"
-#    include "jungle/tasks/this_task.h"
-#endif
-
 namespace jungle::async {
+
+#ifdef JUNGLE_DEBUG_ENABLED
+namespace detail {
+
+void future_trace_start(std::source_location sl);
+void future_trace_end();
+
+};  // namespace detail
+#endif
 
 template<typename T = void>
 class [[nodiscard("A future<T> must always be co_await'ed once")]] future final {
@@ -129,8 +133,7 @@ public:
 
     auto await_suspend(std::coroutine_handle<> waiter) pre(!is_empty()) {
 #ifdef JUNGLE_DEBUG_ENABLED
-        get_debug_host().trace_coroutine_start(
-            this_task::worker().id(), this_task::id(), m_promise->m_source_location);
+        detail::future_trace_start(m_promise->m_source_location);
 #endif
 
         m_waiter_coroutine = waiter;
@@ -139,7 +142,7 @@ public:
 
     T await_resume() pre(!is_empty()) {
 #ifdef JUNGLE_DEBUG_ENABLED
-        get_debug_host().trace_coroutine_end(this_task::worker().id(), this_task::id());
+        detail::future_trace_end();
 #endif
 
         if constexpr (concepts::is_void<T>) {
@@ -162,12 +165,6 @@ private:
             , m_this_coroutine{this_coroutine} {
         m_promise->m_future = this;
     }
-
-#ifdef JUNGLE_DEBUG_ENABLED
-    static tasks::runtime::debug_host &get_debug_host() {
-        return tasks::runtime::worker::current().host_runtime().get_debug_host();
-    };
-#endif
 
     promise_type *m_promise{nullptr};
     [[no_unique_address]] raw_storage<T> m_storage{};

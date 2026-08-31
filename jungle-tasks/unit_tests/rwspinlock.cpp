@@ -5,7 +5,7 @@
 #include <string>
 
 #include "jungle/sync/rwspinlock.h"
-#include "jungle/tasks/runtime/runtime.h"
+#include "jungle/tasks/this_task.h"
 #include "jungle/tasks/this_task.h"
 #include "jungle/test/async_test.h"
 #include "jungle/test/test.h"
@@ -184,7 +184,7 @@ JUNGLE_ASYNC_TEST(void_read_blocks_until_write_released) {
     JUNGLE_ASYNC_ASSERT(wg, "主协程应先获取写锁");
 
     bool read_acquired{false};
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         auto rg = lock.read();
         read_acquired = true;
         co_return;
@@ -209,7 +209,7 @@ JUNGLE_ASYNC_TEST(void_write_blocks_until_read_released) {
     JUNGLE_ASYNC_ASSERT(rg, "主协程应先获取读锁");
 
     bool write_acquired{false};
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         auto wg = lock.write();
         write_acquired = true;
         co_return;
@@ -234,7 +234,7 @@ JUNGLE_ASYNC_TEST(void_write_willing_blocks_new_readers) {
     JUNGLE_ASYNC_ASSERT(rg, "主协程应先获取读锁");
 
     bool write_acquired{false};
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         auto wg = lock.write();
         write_acquired = true;
         co_return;

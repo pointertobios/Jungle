@@ -8,7 +8,7 @@
 
 #include "jungle/sync/condition_variable.h"
 #include "jungle/sync/mpsc.h"
-#include "jungle/tasks/runtime/runtime.h"
+#include "jungle/tasks/this_task.h"
 #include "jungle/test/async_test.h"
 #include "jungle/test/test.h"
 
@@ -163,7 +163,7 @@ JUNGLE_ASYNC_TEST(async_send_and_recv) {
     auto [sender, receiver] = mpsc<int>::channel();
     int value = 0;
 
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         value = co_await receiver.recv();
         co_return;
     });
@@ -180,7 +180,7 @@ JUNGLE_ASYNC_TEST(send_blocks_when_full_and_unblocks_on_recv) {
 
     JUNGLE_ASYNC_ASSERT(sender.try_send(1), "应填满队列");
 
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         sent = co_await sender.send(2);
         co_return;
     });
@@ -200,7 +200,7 @@ JUNGLE_ASYNC_TEST(recv_blocks_when_empty_and_unblocks_on_send) {
     auto [sender, receiver] = mpsc<int>::channel();
     int value = 0;
 
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         value = co_await receiver.recv();
         co_return;
     });
@@ -218,7 +218,7 @@ JUNGLE_ASYNC_TEST(stop_unblocks_blocked_senders) {
 
     JUNGLE_ASYNC_ASSERT(sender.try_send(1), "应填满队列");
 
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         send_result = co_await sender.send(2);
         send_returned = true;
         co_return;
@@ -238,7 +238,7 @@ JUNGLE_ASYNC_TEST(send_returns_false_after_stop) {
 
     receiver.stop();
 
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         send_result = co_await sender.send(42);
         co_return;
     });
@@ -262,10 +262,10 @@ JUNGLE_ASYNC_TEST(multiple_async_senders_all_messages_arrive) {
         co_return;
     };
 
-    auto jh1 = tasks::spawn(producer, sender, 0, msgs_per_sender);
-    auto jh2 = tasks::spawn(producer, sender, 100, msgs_per_sender);
-    auto jh3 = tasks::spawn(producer, sender, 200, msgs_per_sender);
-    auto jh4 = tasks::spawn(producer, sender, 300, msgs_per_sender);
+    auto jh1 = this_task::spawn(producer, sender, 0, msgs_per_sender);
+    auto jh2 = this_task::spawn(producer, sender, 100, msgs_per_sender);
+    auto jh3 = this_task::spawn(producer, sender, 200, msgs_per_sender);
+    auto jh4 = this_task::spawn(producer, sender, 300, msgs_per_sender);
 
     auto consumer = [&]() -> async::future<> {
         for (int i = 0; i < total; ++i) {
@@ -275,7 +275,7 @@ JUNGLE_ASYNC_TEST(multiple_async_senders_all_messages_arrive) {
         co_return;
     };
 
-    auto jhc = tasks::spawn(consumer);
+    auto jhc = this_task::spawn(consumer);
 
     co_await jh1;
     co_await jh2;
@@ -304,9 +304,9 @@ JUNGLE_ASYNC_TEST(multiple_senders_block_on_full_then_unblock_one_by_one) {
         co_return;
     };
 
-    auto jh1 = tasks::spawn(blocked_sender, 1);
-    auto jh2 = tasks::spawn(blocked_sender, 2);
-    auto jh3 = tasks::spawn(blocked_sender, 3);
+    auto jh1 = this_task::spawn(blocked_sender, 1);
+    auto jh2 = this_task::spawn(blocked_sender, 2);
+    auto jh3 = this_task::spawn(blocked_sender, 3);
 
     auto v0 = co_await receiver.recv();
     JUNGLE_ASYNC_ASSERT(v0 == 0, "第一条消息应为 0");
@@ -345,9 +345,9 @@ JUNGLE_ASYNC_TEST(stop_unblocks_multiple_blocked_senders) {
         co_return;
     };
 
-    auto jh1 = tasks::spawn(blocked_sender, 1);
-    auto jh2 = tasks::spawn(blocked_sender, 2);
-    auto jh3 = tasks::spawn(blocked_sender, 3);
+    auto jh1 = this_task::spawn(blocked_sender, 1);
+    auto jh2 = this_task::spawn(blocked_sender, 2);
+    auto jh3 = this_task::spawn(blocked_sender, 3);
 
     receiver.stop();
 
@@ -374,10 +374,10 @@ JUNGLE_ASYNC_TEST(concurrent_try_send_from_multiple_senders_all_arrive) {
         co_return;
     };
 
-    auto jh1 = tasks::spawn(producer, sender, 0, msgs_per_sender);
-    auto jh2 = tasks::spawn(producer, sender, 100, msgs_per_sender);
-    auto jh3 = tasks::spawn(producer, sender, 200, msgs_per_sender);
-    auto jh4 = tasks::spawn(producer, sender, 300, msgs_per_sender);
+    auto jh1 = this_task::spawn(producer, sender, 0, msgs_per_sender);
+    auto jh2 = this_task::spawn(producer, sender, 100, msgs_per_sender);
+    auto jh3 = this_task::spawn(producer, sender, 200, msgs_per_sender);
+    auto jh4 = this_task::spawn(producer, sender, 300, msgs_per_sender);
 
     auto consumer = [&]() -> async::future<> {
         for (int i = 0; i < total; ++i) {
@@ -387,7 +387,7 @@ JUNGLE_ASYNC_TEST(concurrent_try_send_from_multiple_senders_all_arrive) {
         co_return;
     };
 
-    auto jhc = tasks::spawn(consumer);
+    auto jhc = this_task::spawn(consumer);
 
     co_await jh1;
     co_await jh2;

@@ -182,17 +182,3 @@ private:
 };
 
 };  // namespace jungle::tasks::runtime
-
-namespace jungle::tasks {
-
-template<typename... Args>
-auto spawn(async::async_function<Args...> auto &&fn, Args &&...args)
-    requires requires {
-        { fn(args...) } -> async::future_type;
-    }
-{
-    return runtime::worker::current().host_runtime().spawn(
-        std::forward<decltype(fn)>(fn), std::forward<Args>(args)...);
-}
-
-};  // namespace jungle::tasks

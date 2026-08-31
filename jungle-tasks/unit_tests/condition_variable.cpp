@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "jungle/sync/condition_variable.h"
-#include "jungle/tasks/runtime/runtime.h"
+#include "jungle/tasks/this_task.h"
 #include "jungle/test/async_test.h"
 #include "jungle/test/test.h"
 
@@ -35,7 +35,7 @@ JUNGLE_ASYNC_TEST(wait_and_notify_one_resumes_waiter) {
     bool ready = false;
     bool woken = false;
 
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         co_await cv([&] { return ready; });
         woken = true;
     });
@@ -53,7 +53,7 @@ JUNGLE_ASYNC_TEST(predicate_wait_resumes_when_condition_becomes_true) {
     bool ready = false;
     bool done = false;
 
-    auto jh = tasks::spawn([&]() -> async::future<> {
+    auto jh = this_task::spawn([&]() -> async::future<> {
         co_await cv([&] { return ready; });
         done = true;
     });
@@ -76,9 +76,9 @@ JUNGLE_ASYNC_TEST(notify_all_wakes_multiple_waiters) {
         woken_count++;
     };
 
-    auto jh1 = tasks::spawn(waiter);
-    auto jh2 = tasks::spawn(waiter);
-    auto jh3 = tasks::spawn(waiter);
+    auto jh1 = this_task::spawn(waiter);
+    auto jh2 = this_task::spawn(waiter);
+    auto jh3 = this_task::spawn(waiter);
 
     ready = true;
     cv.notify_all();

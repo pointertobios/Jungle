@@ -22,6 +22,7 @@ set(JUNGLE_HEADERS
 )
 
 set(JUNGLE_SOURCES
+    src/async/future.cpp
     src/sync/condition_variable.cpp
     src/tasks/runtime/blocking_worker.cpp
     src/tasks/runtime/debug_host.cpp
