@@ -90,6 +90,8 @@ public:
         future get_return_object(std::source_location sl = std::source_location::current()) {
 #ifdef JUNGLE_DEBUG_ENABLED
             promise_base::m_source_location = sl;
+#else
+            (void)sl;
 #endif
             promise_base::m_this_coroutine = coroutine_handle::from_promise(*this);
             return future{this, promise_base::m_this_coroutine};
@@ -118,11 +120,10 @@ public:
         m_promise->m_future = this;
     }
 
-    future &operator=(future &&rhs) pre(!rhs.is_empty() && !is_empty()) {
+    future &operator=(future &&rhs) pre(!rhs.is_empty() && is_empty()) {
         if (this != &rhs) {
-            m_promise = rhs.m_promise;
-            m_state = rhs.m_state;
-            m_promise->m_future = this;
+            this->~future();
+            new (this) future{std::move(rhs)};
         }
         return *this;
     }

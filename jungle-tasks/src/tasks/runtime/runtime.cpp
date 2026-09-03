@@ -60,7 +60,7 @@ runtime::~runtime() {
         w->join();
     }
     for (auto &w : *m_blocking_workers.read()) {
-        w->join();
+        w.m_worker->join();
     }
 }
 

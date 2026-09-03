@@ -103,6 +103,21 @@ public:
 
         bool is_valid() const { return m_payload != nullptr; }
 
+        [[nodiscard]] std::expected<void, receive_failed> test_recv() noexcept pre(is_valid()) {
+            auto location = m_payload->m_head.load(morder::acquire);
+            if (mask(location) == mask(m_payload->m_tail.load(morder::acquire))) {
+                return std::unexpected{receive_failed::empty};
+            }
+
+            auto s = m_payload->m_queue[mask(location)].m_state.load(morder::acquire);
+
+            if (s != slot_state::available) {
+                return std::unexpected{receive_failed::pending};
+            }
+
+            return {};
+        }
+
         [[nodiscard]] std::expected<T, receive_failed> recv() pre(is_valid()) {
             usize location;
 

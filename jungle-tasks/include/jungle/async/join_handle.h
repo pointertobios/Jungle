@@ -93,7 +93,7 @@ private:
     struct promise_value_mixin : public promise_base {
         void return_value(try_move_t<T> value) pre(promise_base::return_state_valid()) {
             promise_base::m_task_block->m_storage.emplace(try_move(value));
-            auto s = promise_base::m_task_block->m_state.exchange(future_state::complete, morder::release);
+            auto s = promise_base::m_task_block->m_state.exchange(future_state::complete, morder::acq_rel);
             if (s == future_state::awaited) {
                 promise_base::m_task_block->m_awake_token.awake();
             }
@@ -130,9 +130,8 @@ public:
 
     join_handle &operator=(join_handle &&rhs) pre(!rhs.is_empty() && is_empty()) {
         if (this != &rhs) {
-            m_this_coroutine = rhs.m_this_coroutine;
-            rhs.m_this_coroutine = coroutine_handle{};
-            m_task_block = std::move(rhs.m_task_block);
+            this->~join_handle();
+            new (this) join_handle{std::move(rhs)};
         }
         return *this;
     }
@@ -153,13 +152,16 @@ public:
     }
 
     T await_resume() pre(!is_empty()) {
-        (void)m_task_block->m_state.load(morder::acquire);
+        auto s = m_task_block->m_state.load(morder::acquire);
+        contract_assert(s == future_state::complete);
 
         if constexpr (concepts::is_void<T>) {
+            m_task_block.reset();
             return;
         } else {
             T res{try_move(*m_task_block->m_storage.get())};
             m_task_block->m_storage.destroy();
+            m_task_block.reset();
             return res;
         }
     }
