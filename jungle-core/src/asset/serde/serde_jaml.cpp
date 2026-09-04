@@ -1,7 +1,7 @@
 // Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
 // SPDX-License-Identifier: MIT
 
-#include "jungle/core/asset/serde_jaml.h"
+#include "jungle/core/asset/serde/serde_jaml.h"
 
 #include <utility>
 

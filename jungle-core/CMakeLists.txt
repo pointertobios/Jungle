@@ -5,7 +5,8 @@ set(IPREF "include/jungle/core") # Include prefix for headers
 
 set(JUNGLE_HEADERS
     ${IPREF}/asset/asset_id.h
-    ${IPREF}/asset/serde_jaml.h
+    ${IPREF}/asset/asset_provider.h
+    ${IPREF}/asset/serde/serde_jaml.h
     ${IPREF}/component/transform.h
     ${IPREF}/component/motion.h
     ${IPREF}/ecs/component_storage.h
@@ -18,7 +19,7 @@ set(JUNGLE_HEADERS
 
 set(JUNGLE_SOURCES
     src/asset/asset_id.cpp
-    src/asset/serde_jaml.cpp
+    src/asset/serde/serde_jaml.cpp
     src/ecs/component.cpp
     src/ecs/entity.cpp
     src/game.cpp
