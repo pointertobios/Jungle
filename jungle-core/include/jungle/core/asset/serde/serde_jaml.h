@@ -101,6 +101,9 @@ public:
             tag_mismatch,
             malformed_tag,
             not_present,
+            missing_xml_header,
+            invalid_xml_header,
+            build_id_mismatch,
         };
 
         kind m_kind{};
@@ -120,6 +123,9 @@ public:
 
     template<std::integral I>
     std::expected<void, error_type> deserialize_integral(I &value) {
+        if (auto r = pending_header_error(); !r) {
+            return r;
+        }
         if (m_jaml_self_closed) {
             return fail(error_type::kind::empty_content);
         }
@@ -133,6 +139,9 @@ public:
 
     template<std::floating_point F>
     std::expected<void, error_type> deserialize_floating_point(F &value) {
+        if (auto r = pending_header_error(); !r) {
+            return r;
+        }
         if (m_jaml_self_closed) {
             return fail(error_type::kind::empty_content);
         }
@@ -146,6 +155,9 @@ public:
 
     template<concepts::is_enum E>
     std::expected<void, error_type> deserialize_enum(E &value) {
+        if (auto r = pending_header_error(); !r) {
+            return r;
+        }
         if (m_jaml_self_closed) {
             return fail(error_type::kind::empty_content);
         }
@@ -167,8 +179,7 @@ public:
             }
         }
         if (!found) {
-            return fail(
-                error_type::kind::unknown_enumerator, span_offset(full_name), full_name.size());
+            return fail(error_type::kind::unknown_enumerator, span_offset(full_name), full_name.size());
         }
         return {};
     }
@@ -191,6 +202,10 @@ private:
     };
 
     JamlSource(std::string_view source, usize *cursor);
+
+    // 头校验（缺头/无效头/build_id 不匹配）产生的待决错误；无则返回成功。
+    std::expected<void, error_type> pending_header_error() const;
+    void verify_header();
 
     std::unexpected<error_type> fail(error_type::kind kind, usize position, usize extent = 0) const {
         return std::unexpected{error_type{kind, position, extent}};
@@ -233,12 +248,11 @@ private:
     bool skip_quoted();
     bool skip_attributes();
     std::expected<ParsedTag, error_type> consume_start_tag();
-    std::expected<ParsedTag, error_type> consume_start_tag(
-        std::string_view expected, error_type::kind missing_kind);
+    std::expected<ParsedTag, error_type>
+    consume_start_tag(std::string_view expected, error_type::kind missing_kind);
     bool peek_start_tag(std::string_view expected);
     bool peek_self_closed(std::string_view expected);
-    std::expected<void, error_type> consume_end_tag(
-        std::string_view expected, error_type::kind missing_kind);
+    std::expected<void, error_type> consume_end_tag(std::string_view expected, error_type::kind missing_kind);
     bool try_consume_kw(std::string_view kw);
     std::string_view consume_number();
     std::string_view consume_text_token();
@@ -255,6 +269,8 @@ private:
     std::string_view m_class_tag{};
     std::string_view m_open_field{};
     bool m_field_self_closed{false};
+    // XML 声明头校验失败（缺头/无效头/build_id 不匹配）时记录的待决反序列化错误。
+    std::optional<error_type> m_pending_error{};
 };
 
 static_assert(jungle::serde::DeserializeSourceImpl<JamlSource>);

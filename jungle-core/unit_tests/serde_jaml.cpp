@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "jungle/core/asset/serde/serde_jaml.h"
+#include "jungle/build_id.h"
 #include "jungle/test/test.h"
 
 #include <expected>
@@ -15,7 +16,6 @@ namespace {
 using jungle::ustr;
 using jungle::core::asset::JamlSource;
 using jungle::core::asset::JamlTarget;
-using jungle::serde::deserialize;
 using jungle::serde::serialize;
 using namespace std::string_view_literals;
 
@@ -81,8 +81,7 @@ struct serde_optional_struct {
 
 struct[[= jungle::serde::customized]] serde_jaml_test_mixed_annotations {
     [[= jungle::serde::field]] int normal = 1;
-    [[= jungle::serde::field]][[= jungle::serde::customize<serde_jaml_test_plus_thousand>]] int boosted =
-        100;
+    [[= jungle::serde::field]][[= jungle::serde::customize<serde_jaml_test_plus_thousand>]] int boosted = 100;
     int skipped = 999;
     [[= jungle::serde::field]] bool active = true;
 };
@@ -100,12 +99,74 @@ struct serde_jaml_test_with_range_member {
 
 template<typename T>
 jungle::ustr serialize_to_jaml(const T &value) {
-    return serialize<JamlTarget>(value);
+    auto doc = serialize<JamlTarget>(value);
+    // XML 声明头由专门的用例校验；这里返回去除头后的 jaml 正文，便于按正文逐段断言。
+    auto text = doc.view();
+    if (text.starts_with("<?xml")) {
+        if (const auto pi_end = text.find("?>"); pi_end != std::string_view::npos) {
+            text = text.substr(pi_end + 2);
+            if (!text.empty() && text.front() == '\n') {
+                text.remove_prefix(1);
+            }
+        }
+    }
+    return ustr{text};
+}
+
+// 当前 build_id() 的 32 位小写十六进制。
+ustr current_build_id_hex() { return ustr::format("{:032x}", jungle::build_id()); }
+
+// 构造 XML 声明头：jaml_version="<build_id_str><hex>"。
+ustr jaml_header_with(std::string_view build_id_str, std::string_view hex) {
+    ustr head{"<?xml version=\"1.0\" encoding=\"UTF-8\" jaml_version=\""};
+    head.append(build_id_str);
+    head.append("<");
+    head.append(hex);
+    head.append(">\"?>\n");
+    return head;
+}
+
+// 使用当前构建信息构造的头部。
+ustr current_jaml_header() {
+    const auto hex = current_build_id_hex();
+    return jaml_header_with(jungle::build_id_string().view(), hex.view());
+}
+
+// ---- 反序列化测试包装 ----
+// JamlSource 要求载荷必须携带有效的 XML 声明头。
+// 为让各正文用例保持简洁，这里以同名包装屏蔽 jungle::serde::deserialize：
+// 凡从载荷反序列化且载荷未以// "<?xml" 开头，就自动补上当前构建的 jaml_version 头；已带头的载荷则原样转发。
+// 注意：本包装仅覆盖“从载荷”反序列化的两个重载；直接操作 source 的调用请显式使用
+// jungle::serde::deserialize（否则会与 ADL 找到的真实重载二义）。
+// “缺头/无效头一律失败”由专门用例（直接调用jungle::serde::deserialize）覆盖。
+
+inline ustr with_valid_header(const ustr &payload) {
+    if (payload.view().starts_with("<?xml")) {
+        return payload;
+    }
+    auto doc = current_jaml_header();
+    doc.append(payload);
+    return doc;
+}
+
+template<typename T, typename Source>
+    requires jungle::serde::DeserializeSourceImpl<Source> && std::is_default_constructible_v<T>
+auto deserialize(const typename Source::source_type &payload)
+    -> std::expected<T, typename Source::error_type> {
+    return jungle::serde::deserialize<T, Source>(with_valid_header(payload));
+}
+
+template<typename T, typename Source>
+    requires jungle::serde::DeserializeSourceImpl<Source>
+auto deserialize(const typename Source::source_type &payload, T &value)
+    -> std::expected<void, typename Source::error_type> {
+    return jungle::serde::deserialize<T, Source>(with_valid_header(payload), value);
 }
 
 JUNGLE_SYNC_TEST(serializes_direct_supported_categories) {
     JUNGLE_SYNC_ASSERT(
-        serialize_to_jaml(true).view() == "<jaml>\n  true\n</jaml>"sv, "bool true 应序列化为缩进后的 jaml 文本");
+        serialize_to_jaml(true).view() == "<jaml>\n  true\n</jaml>"sv,
+        "bool true 应序列化为缩进后的 jaml 文本");
     JUNGLE_SYNC_ASSERT(
         serialize_to_jaml(false).view() == "<jaml>\n  false\n</jaml>"sv,
         "bool false 应序列化为缩进后的 jaml 文本");
@@ -161,7 +222,8 @@ JUNGLE_SYNC_TEST(uses_placeholder_name_for_unnamed_types) {
     }();
 
     JUNGLE_SYNC_ASSERT(
-        serialized.view() == "<jaml>\n  <_unnamed>\n    <count>3</count>\n    <ready>true</ready>\n  </_unnamed>\n</jaml>"sv,
+        serialized.view()
+            == "<jaml>\n  <_unnamed>\n    <count>3</count>\n    <ready>true</ready>\n  </_unnamed>\n</jaml>"sv,
         "无标识符类型应使用合法 XML 名 _unnamed");
     JUNGLE_SYNC_SUCCESS();
 }
@@ -315,8 +377,7 @@ JUNGLE_SYNC_TEST(deserializes_integers) {
     JUNGLE_SYNC_ASSERT(r.has_value() && *r == 0, "零应正确反序列化");
 
     auto r2 = deserialize<long long, JamlSource>(ustr{"<jaml>9223372036854775807</jaml>"});
-    JUNGLE_SYNC_ASSERT(
-        r2.has_value() && *r2 == 9223372036854775807LL, "大 int64 应正确反序列化");
+    JUNGLE_SYNC_ASSERT(r2.has_value() && *r2 == 9223372036854775807LL, "大 int64 应正确反序列化");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -331,13 +392,12 @@ JUNGLE_SYNC_TEST(deserializes_floating_point) {
 }
 
 JUNGLE_SYNC_TEST(deserializes_enum) {
-    auto r = deserialize<serde_jaml_test_color, JamlSource>(
-        ustr{"<jaml>serde_jaml_test_color::green</jaml>"});
+    auto r =
+        deserialize<serde_jaml_test_color, JamlSource>(ustr{"<jaml>serde_jaml_test_color::green</jaml>"});
     JUNGLE_SYNC_ASSERT(
         r.has_value() && *r == serde_jaml_test_color::green, "枚举应能从 TypeName::EnumeratorName 还原");
     r = deserialize<serde_jaml_test_color, JamlSource>(ustr{"<jaml>red</jaml>"});
-    JUNGLE_SYNC_ASSERT(
-        r.has_value() && *r == serde_jaml_test_color::red, "枚举也应能仅用枚举项名还原");
+    JUNGLE_SYNC_ASSERT(r.has_value() && *r == serde_jaml_test_color::red, "枚举也应能仅用枚举项名还原");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -348,8 +408,7 @@ JUNGLE_SYNC_TEST(deserializes_optional) {
         "有值 optional 应还原内部整数");
 
     auto nullopt = deserialize<std::optional<int>, JamlSource>(ustr{"<jaml><null/></jaml>"});
-    JUNGLE_SYNC_ASSERT(
-        nullopt.has_value() && !(*nullopt).has_value(), "null 元素应还原为空 optional");
+    JUNGLE_SYNC_ASSERT(nullopt.has_value() && !(*nullopt).has_value(), "null 元素应还原为空 optional");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -364,8 +423,7 @@ JUNGLE_SYNC_TEST(deserializes_range) {
     JUNGLE_SYNC_ASSERT(empty_vec.has_value() && (*empty_vec).empty(), "空 list 应还原为空 vector");
 
     auto self_closed = deserialize<std::vector<int>, JamlSource>(ustr{"<jaml><list/></jaml>"});
-    JUNGLE_SYNC_ASSERT(
-        self_closed.has_value() && (*self_closed).empty(), "自闭合 list 也应还原为空 vector");
+    JUNGLE_SYNC_ASSERT(self_closed.has_value() && (*self_closed).empty(), "自闭合 list 也应还原为空 vector");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -433,16 +491,14 @@ JUNGLE_SYNC_TEST(round_trip_optional_struct) {
         auto text = serialize_to_jaml(original);
         auto restored = deserialize<serde_optional_struct, JamlSource>(ustr{text.view()});
         JUNGLE_SYNC_ASSERT(restored.has_value(), "有值 optional 字段反序列化应成功");
-        JUNGLE_SYNC_ASSERT(
-            serialize_to_jaml(*restored).view() == text.view(), "有值 optional 字段应能往返");
+        JUNGLE_SYNC_ASSERT(serialize_to_jaml(*restored).view() == text.view(), "有值 optional 字段应能往返");
     }
     {
         serde_optional_struct original{.id = 2, .maybe_score = {}};
         auto text = serialize_to_jaml(original);
         auto restored = deserialize<serde_optional_struct, JamlSource>(ustr{text.view()});
         JUNGLE_SYNC_ASSERT(restored.has_value(), "空 optional 字段反序列化应成功");
-        JUNGLE_SYNC_ASSERT(
-            serialize_to_jaml(*restored).view() == text.view(), "空 optional 字段应能往返");
+        JUNGLE_SYNC_ASSERT(serialize_to_jaml(*restored).view() == text.view(), "空 optional 字段应能往返");
     }
     JUNGLE_SYNC_SUCCESS();
 }
@@ -455,8 +511,7 @@ JUNGLE_SYNC_TEST(deserializes_optional_of_range) {
     std::vector<int> expected{7, 8, 9};
     JUNGLE_SYNC_ASSERT(*(*with_vec) == expected, "optional<vector> 内部元素应匹配");
 
-    auto null_vec =
-        deserialize<std::optional<std::vector<int>>, JamlSource>(ustr{"<jaml><null/></jaml>"});
+    auto null_vec = deserialize<std::optional<std::vector<int>>, JamlSource>(ustr{"<jaml><null/></jaml>"});
     JUNGLE_SYNC_ASSERT(
         null_vec.has_value() && !(*null_vec).has_value(), "optional<vector> 的 null 应还原为空");
     JUNGLE_SYNC_SUCCESS();
@@ -470,8 +525,7 @@ JUNGLE_SYNC_TEST(round_trip_unnamed_type) {
     auto text = serialize_to_jaml(original);
     auto restored = deserialize<std::remove_cvref_t<decltype(original)>, JamlSource>(ustr{text.view()});
     JUNGLE_SYNC_ASSERT(restored.has_value(), "无名类型反序列化应成功");
-    JUNGLE_SYNC_ASSERT(
-        serialize_to_jaml(*restored).view() == text.view(), "无名类型应能通过 _unnamed 往返");
+    JUNGLE_SYNC_ASSERT(serialize_to_jaml(*restored).view() == text.view(), "无名类型应能通过 _unnamed 往返");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -481,8 +535,7 @@ JUNGLE_SYNC_TEST(round_trip_field_customized) {
     auto restored = deserialize<serde_jaml_test_field_customized, JamlSource>(ustr{text.view()});
     JUNGLE_SYNC_ASSERT(restored.has_value(), "字段定制器反序列化应成功");
     JUNGLE_SYNC_ASSERT(restored->value == 42, "字段定制器反序列化后应还原为定制前的值");
-    JUNGLE_SYNC_ASSERT(
-        serialize_to_jaml(*restored).view() == text.view(), "字段定制器应能往返");
+    JUNGLE_SYNC_ASSERT(serialize_to_jaml(*restored).view() == text.view(), "字段定制器应能往返");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -491,8 +544,7 @@ JUNGLE_SYNC_TEST(round_trip_mixed_annotations) {
     auto text = serialize_to_jaml(original);
     auto restored = deserialize<serde_jaml_test_mixed_annotations, JamlSource>(ustr{text.view()});
     JUNGLE_SYNC_ASSERT(restored.has_value(), "混合注解反序列化应成功");
-    JUNGLE_SYNC_ASSERT(
-        serialize_to_jaml(*restored).view() == text.view(), "混合注解应能往返");
+    JUNGLE_SYNC_ASSERT(serialize_to_jaml(*restored).view() == text.view(), "混合注解应能往返");
     JUNGLE_SYNC_SUCCESS();
 }
 
@@ -505,9 +557,11 @@ JUNGLE_SYNC_TEST(deserialize_into_existing_value) {
 
 JUNGLE_SYNC_TEST(deserialize_with_direct_source) {
     JamlSource source;
-    source.provide_source(ustr{"<jaml><list><item>1</item><item>2</item><item>3</item></list></jaml>"});
+    auto doc = current_jaml_header();
+    doc.append("<jaml><list><item>1</item><item>2</item><item>3</item></list></jaml>");
+    source.provide_source(ustr{doc.view()});
     std::vector<int> value;
-    auto ok = deserialize(source, value);
+    auto ok = jungle::serde::deserialize(source, value);
     JUNGLE_SYNC_ASSERT(ok.has_value(), "直接操作 source 的反序列化应成功");
     std::vector<int> expected{1, 2, 3};
     JUNGLE_SYNC_ASSERT(value == expected, "deserialize(source, value) 应填入预构造对象");
@@ -522,16 +576,18 @@ JUNGLE_SYNC_TEST(deserialize_optional_clears_existing) {
 }
 
 JUNGLE_SYNC_TEST(accepts_whitespace_and_comments) {
-    auto vec = deserialize<std::vector<int>, JamlSource>(ustr{
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+    // 有效头由测试助手提供；正文含空白与注释，应被忽略。
+    auto doc = current_jaml_header();
+    doc.append(
         "<jaml>\n"
         "  <!-- numbers -->\n"
         "  <list>\n"
         "    <item>1</item>\n"
         "    <item>2</item>\n"
         "  </list>\n"
-        "</jaml>\n"});
-    JUNGLE_SYNC_ASSERT(vec.has_value(), "带空白、注释和 XML 声明的文档应能解析");
+        "</jaml>\n");
+    auto vec = deserialize<std::vector<int>, JamlSource>(ustr{doc.view()});
+    JUNGLE_SYNC_ASSERT(vec.has_value(), "带头文档内的空白与注释应被忽略并正确解析");
     std::vector<int> expected{1, 2};
     JUNGLE_SYNC_ASSERT(*vec == expected, "忽略空白与注释后元素应匹配");
     JUNGLE_SYNC_SUCCESS();
@@ -540,10 +596,11 @@ JUNGLE_SYNC_TEST(accepts_whitespace_and_comments) {
 JUNGLE_SYNC_TEST(rejects_invalid_payloads) {
     using kind = JamlSource::error_type::kind;
 
-    auto empty = deserialize<int, JamlSource>(ustr{""});
+    // 空输入缺少 XML 声明头：无论 Debug/Release 都应反序列化失败。
+    auto empty = jungle::serde::deserialize<int, JamlSource>(ustr{""});
     JUNGLE_SYNC_ASSERT(!empty.has_value(), "空输入应失败");
     JUNGLE_SYNC_ASSERT(
-        empty.error().m_kind == kind::expected_number, "空输入反序列化整数应为 expected_number");
+        empty.error().m_kind == kind::missing_xml_header, "空输入缺少 XML 头应为 missing_xml_header");
     JUNGLE_SYNC_ASSERT(empty.error().m_position == 0, "空输入错误位置应在开头");
 
     auto bool_as_int = deserialize<int, JamlSource>(ustr{"<jaml>true</jaml>"});
@@ -556,8 +613,7 @@ JUNGLE_SYNC_TEST(rejects_invalid_payloads) {
     JUNGLE_SYNC_ASSERT(bad_bool.error().m_kind == kind::expected_bool, "非法 bool 文本应为 expected_bool");
     JUNGLE_SYNC_ASSERT(bad_bool.error().m_extent == 3, "非法 bool 的 extent 应为 token 长度");
 
-    auto missing_close = deserialize<std::vector<int>, JamlSource>(
-        ustr{"<jaml><list><item>1</item></jaml>"});
+    auto missing_close = deserialize<std::vector<int>, JamlSource>(ustr{"<jaml><list><item>1</item></jaml>"});
     JUNGLE_SYNC_ASSERT(!missing_close.has_value(), "缺少闭合标签应失败");
     JUNGLE_SYNC_ASSERT(
         missing_close.error().m_kind == kind::tag_mismatch, "缺少 list 闭合标签应为 tag_mismatch");
@@ -568,8 +624,7 @@ JUNGLE_SYNC_TEST(rejects_invalid_payloads) {
     JUNGLE_SYNC_ASSERT(
         overflow.error().m_kind == kind::number_out_of_range, "过大整数应为 number_out_of_range");
 
-    auto unknown_enum =
-        deserialize<serde_jaml_test_color, JamlSource>(ustr{"<jaml>yellow</jaml>"});
+    auto unknown_enum = deserialize<serde_jaml_test_color, JamlSource>(ustr{"<jaml>yellow</jaml>"});
     JUNGLE_SYNC_ASSERT(!unknown_enum.has_value(), "未知枚举项应失败");
     JUNGLE_SYNC_ASSERT(
         unknown_enum.error().m_kind == kind::unknown_enumerator, "未知枚举项应为 unknown_enumerator");
@@ -583,6 +638,104 @@ JUNGLE_SYNC_TEST(rejects_invalid_payloads) {
     JUNGLE_SYNC_ASSERT(!malformed.has_value(), "残缺起始标签应失败");
     JUNGLE_SYNC_ASSERT(malformed.error().m_kind == kind::malformed_tag, "残缺起始标签应为 malformed_tag");
 
+    JUNGLE_SYNC_SUCCESS();
+}
+
+// ---- XML 声明头与 build_id 版本校验 ----
+
+JUNGLE_SYNC_TEST(serialized_document_begins_with_versioned_xml_declaration) {
+    // 完整文档（含头）应精确形如：
+    // <?xml version="1.0" encoding="UTF-8" jaml_version="{}<{:032x}>"?>
+    const auto doc = serialize<JamlTarget>(42);
+
+    auto expected = current_jaml_header();
+    expected.append("<jaml>\n  42\n</jaml>");
+
+    JUNGLE_SYNC_ASSERT(
+        doc.view() == expected.view(),
+        "序列化文档应以带 jaml_version=\"build_id_str<build_id:032x>\" 的 XML 声明头开头");
+    JUNGLE_SYNC_SUCCESS();
+}
+
+JUNGLE_SYNC_TEST(round_trips_document_with_xml_header) {
+    const serde_jaml_test_outer original{
+        .number = 7,
+        .ratio = 2.5,
+        .flag = true,
+        .color = serde_jaml_test_color::blue,
+        .inner = serde_jaml_test_inner{.value = 11, .enabled = false},
+        .items = {1, 2, 3}};
+    const auto doc = serialize<JamlTarget>(original);
+    auto restored = deserialize<serde_jaml_test_outer, JamlSource>(ustr{doc.view()});
+    JUNGLE_SYNC_ASSERT(restored.has_value(), "带头 XML 文档反序列化应成功");
+    const auto redoc = serialize<JamlTarget>(*restored);
+    JUNGLE_SYNC_ASSERT(redoc.view() == doc.view(), "带头文档应能完整往返");
+    JUNGLE_SYNC_SUCCESS();
+}
+
+JUNGLE_SYNC_TEST(deserialization_verifies_only_build_id_hex) {
+    // build_id_str 仅供人类阅读：字符串部分被改掉，但只要 build_id() 十六进制一致即应成功。
+    const auto hex = current_build_id_hex();
+    auto doc = jaml_header_with("fake-readable-string", hex.view());
+    doc.append("<jaml>42</jaml>");
+
+    auto r = deserialize<int, JamlSource>(ustr{doc.view()});
+    JUNGLE_SYNC_ASSERT(
+        r.has_value() && *r == 42, "反序列化仅校验 build_id() 对应的十六进制段，字符串部分不影响结果");
+    JUNGLE_SYNC_SUCCESS();
+}
+
+JUNGLE_SYNC_TEST(deserialization_build_id_mismatch_behavior) {
+    // 用全零十六进制伪造一个必然与当前 build_id() 不同的版本。
+    const auto zeros = ustr::format("{:032x}", jungle::u128{0});
+    auto doc = jaml_header_with("stale-build", zeros.view());
+    doc.append("<jaml>42</jaml>");
+
+#ifdef JUNGLE_DEBUG_ENABLED
+    // Debug / RelWithDebInfo：build_id 不匹配时静默放行。
+    // TODO：未来日志系统完成后，此处应改为 warning 日志提示载荷来自不同构建。
+    auto r = deserialize<int, JamlSource>(ustr{doc.view()});
+    JUNGLE_SYNC_ASSERT(r.has_value() && *r == 42, "Debug 下 build_id 不匹配应静默忽略并继续解析");
+#else
+    // Release：build_id 不匹配 → 反序列化失败。
+    auto r = deserialize<int, JamlSource>(ustr{doc.view()});
+    JUNGLE_SYNC_ASSERT(!r.has_value(), "Release 下 build_id 不匹配应反序列化失败");
+    JUNGLE_SYNC_ASSERT(
+        r.error().m_kind == JamlSource::error_type::kind::build_id_mismatch,
+        "Release 下失败错误类型应为 build_id_mismatch");
+#endif
+    JUNGLE_SYNC_SUCCESS();
+}
+
+JUNGLE_SYNC_TEST(deserialization_rejects_document_without_header) {
+    // 无 XML 声明头的文档：Debug 与 Release 都视为反序列化失败。
+    auto r = jungle::serde::deserialize<int, JamlSource>(ustr{"<jaml>42</jaml>"});
+    JUNGLE_SYNC_ASSERT(!r.has_value(), "缺少 XML 声明头的文档应反序列化失败");
+    JUNGLE_SYNC_ASSERT(
+        r.error().m_kind == JamlSource::error_type::kind::missing_xml_header,
+        "缺头失败错误类型应为 missing_xml_header");
+    JUNGLE_SYNC_SUCCESS();
+}
+
+JUNGLE_SYNC_TEST(deserialization_rejects_header_without_jaml_version) {
+    // 声明头存在但缺少 jaml_version：视为无效头，Debug 与 Release 都应失败。
+    jungle::ustr doc{"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<jaml>42</jaml>"};
+    auto r = jungle::serde::deserialize<int, JamlSource>(ustr{doc.view()});
+    JUNGLE_SYNC_ASSERT(!r.has_value(), "缺少 jaml_version 的声明头应反序列化失败");
+    JUNGLE_SYNC_ASSERT(
+        r.error().m_kind == JamlSource::error_type::kind::invalid_xml_header,
+        "无效头失败错误类型应为 invalid_xml_header");
+    JUNGLE_SYNC_SUCCESS();
+}
+
+JUNGLE_SYNC_TEST(deserialization_rejects_malformed_jaml_version) {
+    // jaml_version 缺少 <hex> 段：视为无效头，Debug 与 Release 都应失败。
+    jungle::ustr doc{"<?xml version=\"1.0\" encoding=\"UTF-8\" jaml_version=\"no-hex\"?>\n<jaml>42</jaml>"};
+    auto r = jungle::serde::deserialize<int, JamlSource>(ustr{doc.view()});
+    JUNGLE_SYNC_ASSERT(!r.has_value(), "缺少 <hex> 段的 jaml_version 应反序列化失败");
+    JUNGLE_SYNC_ASSERT(
+        r.error().m_kind == JamlSource::error_type::kind::invalid_xml_header,
+        "无效头失败错误类型应为 invalid_xml_header");
     JUNGLE_SYNC_SUCCESS();
 }
 

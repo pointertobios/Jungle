@@ -5,9 +5,18 @@
 
 #include <utility>
 
+#include "jungle/build_id.h"
+
 namespace jungle::core::asset {
 
-JamlTarget::JamlTarget() { m_result.append("<jaml>"); }
+JamlTarget::JamlTarget() {
+    // 序列化产物以带 jaml_version 的 XML 声明头开头。值格式 "{}<{:032x}>"：
+    // build_id_string() 供人类阅读，build_id() 以 32 位小写十六进制供反序列化校验。
+    m_result.append(
+        ustr::format(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" jaml_version=\"{}<{:032x}>\"?>\n<jaml>",
+            jungle::build_id_string(), jungle::build_id()));
+}
 
 JamlTarget::JamlTarget(ustr &external, usize indent, bool inline_content, bool *block)
         : m_storage{std::nullopt}
@@ -148,11 +157,116 @@ void JamlSource::provide_source(source_type &&source) {
 void JamlSource::bind_source() {
     *m_cursor = 0;
     skip_bom();
+    m_pending_error.reset();
+    // 解析 XML 声明头并校验 jaml_version；缺头/无效头在 Debug 与 Release 下都视为失败。
+    verify_header();
     skip_ignored();
     if (peek_start_tag("jaml")) {
         auto tag = consume_start_tag("jaml", error_type::kind::expected_start_tag);
         m_jaml_self_closed = tag.has_value() && tag->self_closed;
     }
+}
+
+void JamlSource::verify_header() {
+    // 载荷必须以 XML 声明头开头；缺失/无效头在 Debug 与 Release 下都视为反序列化失败。
+    if (!starts_with("<?xml")) {
+        m_pending_error = error_type{
+            error_type::kind::missing_xml_header,
+            *m_cursor,
+            0,
+        };
+        return;
+    }
+
+    *m_cursor += 5;  // 越过 "<?xml"
+
+    std::string_view version_value{};
+    usize version_pos = 0;
+    bool declaration_closed = false;
+
+    for (;;) {
+        skip_ws();
+        if (at_end()) {
+            break;  // 声明未闭合 → 无效头
+        }
+        if (starts_with("?>")) {
+            *m_cursor += 2;  // 消费声明结束符
+            declaration_closed = true;
+            break;
+        }
+        auto attr_name = parse_name();
+        if (attr_name.empty()) {
+            break;
+        }
+        skip_ws();
+        if (at_end() || current() != '=') {
+            break;
+        }
+        advance();  // '='
+        skip_ws();
+        if (at_end()) {
+            break;
+        }
+        const char quote = current();
+        if (quote != '"' && quote != '\'') {
+            break;
+        }
+        advance();  // 左引号
+        const usize value_begin = *m_cursor;
+        while (!at_end() && current() != quote) {
+            advance();
+        }
+        if (at_end()) {
+            break;
+        }
+        if (attr_name == "jaml_version") {
+            version_value = m_source.substr(value_begin, *m_cursor - value_begin);
+            version_pos = value_begin;
+        }
+        advance();  // 右引号
+    }
+
+    // 头必须完整闭合，且带形如 "<build_id_str><{hex32}>" 的 jaml_version，否则视为无效头。
+    const auto open = version_value.find('<');
+    const auto close =
+        (open == std::string_view::npos) ? std::string_view::npos : version_value.find('>', open + 1);
+    const bool hex_present = declaration_closed && open != std::string_view::npos
+                             && close != std::string_view::npos && (close - open - 1) == 32;
+    if (!hex_present) {
+        m_pending_error = error_type{
+            error_type::kind::invalid_xml_header,
+            version_pos,
+            version_value.size(),
+        };
+        return;
+    }
+
+    // 值格式 "<build_id_str><{hex32}>"：build_id_str 仅供人类阅读，
+    // 仅校验 build_id() 对应的 32 位小写十六进制段。
+    const auto expected_hex = ustr::format("{:032x}", jungle::build_id());
+    if (version_value.substr(open + 1, 32) == expected_hex.view()) {
+        return;  // build_id 一致 → 通过
+    }
+
+#ifdef JUNGLE_DEBUG_ENABLED
+    // TODO: 日志系统完成后，此处应改为 warning 日志，提示载荷来自不同构建。
+    // Debug / RelWithDebInfo：build_id 不匹配仅静默放行，便于开发期直接读取旧数据。
+    (void)version_pos;
+#else
+    // Release：build_id 不匹配 → 反序列化失败。
+    m_pending_error = error_type{
+        error_type::kind::build_id_mismatch,
+        version_pos,
+        version_value.size(),
+    };
+#endif
+}
+
+std::expected<void, JamlSource::error_type> JamlSource::pending_header_error() const {
+    if (m_pending_error) {
+        return std::unexpected{*m_pending_error};
+    }
+    return {};
 }
 
 JamlSource JamlSource::spawn_subsource() {
@@ -163,6 +277,9 @@ JamlSource JamlSource::spawn_subsource() {
 }
 
 std::expected<void, JamlSource::error_type> JamlSource::deserialize_bool(bool &value) {
+    if (auto r = pending_header_error(); !r) {
+        return r;
+    }
     if (m_jaml_self_closed) {
         return fail(error_type::kind::empty_content);
     }
@@ -182,6 +299,9 @@ std::expected<void, JamlSource::error_type> JamlSource::deserialize_bool(bool &v
 }
 
 std::expected<void, JamlSource::error_type> JamlSource::deserialize_optional_nonnull() {
+    if (auto r = pending_header_error(); !r) {
+        return r;
+    }
     if (m_jaml_self_closed) {
         return fail(error_type::kind::not_present);
     }
@@ -196,6 +316,9 @@ std::expected<void, JamlSource::error_type> JamlSource::deserialize_optional_non
 }
 
 std::expected<void, JamlSource::error_type> JamlSource::deserialize_optional_nullopt() {
+    if (auto r = pending_header_error(); !r) {
+        return r;
+    }
     if (m_jaml_self_closed) {
         return fail(error_type::kind::empty_content);
     }
@@ -210,6 +333,9 @@ std::expected<void, JamlSource::error_type> JamlSource::deserialize_optional_nul
 }
 
 std::expected<void, JamlSource::error_type> JamlSource::deserialize_range_head() {
+    if (auto r = pending_header_error(); !r) {
+        return r;
+    }
     if (m_jaml_self_closed) {
         return fail(error_type::kind::empty_content);
     }
@@ -247,6 +373,9 @@ std::expected<void, JamlSource::error_type> JamlSource::deserialize_range_tail()
 }
 
 std::expected<void, JamlSource::error_type> JamlSource::deserialize_class_head() {
+    if (auto r = pending_header_error(); !r) {
+        return r;
+    }
     if (m_jaml_self_closed) {
         return fail(error_type::kind::empty_content);
     }
@@ -309,9 +438,7 @@ bool JamlSource::starts_with(std::string_view prefix) const {
     return m_source.substr(*m_cursor).starts_with(prefix);
 }
 
-std::string_view JamlSource::token_at(usize start) const {
-    return m_source.substr(start, *m_cursor - start);
-}
+std::string_view JamlSource::token_at(usize start) const { return m_source.substr(start, *m_cursor - start); }
 
 bool JamlSource::is_xml_ws(char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
 
@@ -464,8 +591,8 @@ std::expected<JamlSource::ParsedTag, JamlSource::error_type> JamlSource::consume
     return ParsedTag{name, self_closed};
 }
 
-std::expected<JamlSource::ParsedTag, JamlSource::error_type> JamlSource::consume_start_tag(
-    std::string_view expected, error_type::kind missing_kind) {
+std::expected<JamlSource::ParsedTag, JamlSource::error_type>
+JamlSource::consume_start_tag(std::string_view expected, error_type::kind missing_kind) {
     auto tag = consume_start_tag();
     if (!tag) {
         if (tag.error().m_kind == error_type::kind::expected_start_tag) {
@@ -493,8 +620,8 @@ bool JamlSource::peek_self_closed(std::string_view expected) {
     return tag.has_value() && tag->name == expected && tag->self_closed;
 }
 
-std::expected<void, JamlSource::error_type> JamlSource::consume_end_tag(
-    std::string_view expected, error_type::kind missing_kind) {
+std::expected<void, JamlSource::error_type>
+JamlSource::consume_end_tag(std::string_view expected, error_type::kind missing_kind) {
     skip_ignored();
     const usize pos = *m_cursor;
     if (at_end()) {
