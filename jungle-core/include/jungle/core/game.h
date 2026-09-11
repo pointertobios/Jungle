@@ -13,7 +13,7 @@ namespace jungle::core {
 
 class Game {
 public:
-    Game(AssetID initial_level);
+    Game();
 
     async::future<> run();
 };

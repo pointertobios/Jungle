@@ -692,8 +692,6 @@ JUNGLE_SYNC_TEST(deserialization_build_id_mismatch_behavior) {
     doc.append("<jaml>42</jaml>");
 
 #ifdef JUNGLE_DEBUG_ENABLED
-    // Debug / RelWithDebInfo：build_id 不匹配时静默放行。
-    // TODO：未来日志系统完成后，此处应改为 warning 日志提示载荷来自不同构建。
     auto r = deserialize<int, JamlSource>(ustr{doc.view()});
     JUNGLE_SYNC_ASSERT(r.has_value() && *r == 42, "Debug 下 build_id 不匹配应静默忽略并继续解析");
 #else

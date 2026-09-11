@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <expected>
 #include <functional>
 #include <memory>
@@ -11,6 +12,7 @@
 #include "jungle/async/future.h"
 #include "jungle/core/asset/asset_id.h"
 #include "jungle/core/asset/serde/serde_jaml.h"
+#include "jungle/core/asset/embedded_tree.h"
 #include "jungle/serde/deserialize.h"
 #include "jungle/serde/serde.h"
 #include "jungle/serde/serialize.h"
@@ -103,6 +105,10 @@ namespace providers {
 
 class EmbeddedJamlProvider : public AssetProviderBase<EmbeddedJamlProvider> {
 public:
+    static bool set_embedded_asset_tree(EmbeddedAssetNode *tree);
+
+    EmbeddedJamlProvider();
+
     using DeserializeSource = JamlSource;
     using SerializeTarget = JamlTarget;
 
@@ -122,8 +128,29 @@ static_assert(AssetProviderImpl<EmbeddedJamlProvider>);
 
 class AssetProvider {
 public:
+    template<AssetProviderImpl Provider, typename... Args>
+        requires std::constructible_from<Provider, Args...>
+    static AssetProvider provide(Args &&...args) {
+        return AssetProvider{std::make_unique<Provider>(std::forward<Args>(args)...)};
+    }
+
+    template<AssetProviderImpl Provider>
+    explicit AssetProvider(std::unique_ptr<Provider> &&provider)
+            : m_provider{std::move(provider)} {}
+
+    template<typename T>
+    async::future<std::expected<T, AssetLoadFailed>> load(AssetID id) {
+        return std::visit([id](auto &provider) { return provider->template load<T>(id); }, m_provider);
+    }
+
+    template<typename T>
+    async::future<std::expected<void, AssetSaveFailed>> save(AssetID id, const T &value) {
+        return std::visit(
+            [id, &value](auto &provider) { return provider->template save<T>(id, value); }, m_provider);
+    }
+
 private:
-    std::variant<providers::EmbeddedJamlProvider> m_provider;
+    std::variant<std::unique_ptr<providers::EmbeddedJamlProvider>> m_provider;
 };
 
 };  // namespace jungle::core::asset

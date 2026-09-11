@@ -249,8 +249,7 @@ void JamlSource::verify_header() {
     }
 
 #ifdef JUNGLE_DEBUG_ENABLED
-    // TODO: 日志系统完成后，此处应改为 warning 日志，提示载荷来自不同构建。
-    // Debug / RelWithDebInfo：build_id 不匹配仅静默放行，便于开发期直接读取旧数据。
+    // TODO: 日志 warning[源数据来自不同的引擎构建ID]
     (void)version_pos;
 #else
     // Release：build_id 不匹配 → 反序列化失败。

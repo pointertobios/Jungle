@@ -6,6 +6,7 @@
 #include "jungle/async/future.h"
 #include "jungle/async/invoke.h"
 #include "jungle/build_id.h"
+#include "jungle/core/asset/asset_id.h"
 #include "jungle/core/ecs/component_storage.h"
 #include "jungle/core/ecs/entity.h"
 #include "jungle/core/level.h"
