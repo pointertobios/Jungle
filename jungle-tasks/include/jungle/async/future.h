@@ -12,8 +12,12 @@
 #include "jungle/meta.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
+#include "jungle/tasks/runtime/predecl.h"
+#include "jungle/tasks/runtime/worker.h"
+#include "jungle/tasks/this_task.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/raw_storage.h"
+
 
 namespace jungle::async {
 
@@ -22,6 +26,9 @@ namespace detail {
 
 void future_trace_start(std::source_location sl);
 void future_trace_end();
+
+void future_create_placement_executing_guard(raw_storage<tasks::runtime::placement_executing_guard> &guard);
+void future_destroy_placement_executing_guard(raw_storage<tasks::runtime::placement_executing_guard> &guard);
 
 };  // namespace detail
 #endif
@@ -129,6 +136,23 @@ public:
     }
 
     bool is_empty() const { return m_state == future_state::empty; }
+
+    T placement_execute() {
+        raw_storage<tasks::runtime::placement_executing_guard> guard;
+        future_create_placement_executing_guard(guard);
+        m_this_coroutine.resume();
+        future_destroy_placement_executing_guard(guard);
+
+        if constexpr (concepts::is_void<T>) {
+            m_state = future_state::empty;
+            return;
+        } else {
+            T res{try_move(*m_storage.get())};
+            m_storage.destroy();
+            m_state = future_state::empty;
+            return res;
+        }
+    }
 
     bool await_ready() pre(!is_empty()) { return false; }
 

@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 #include "jungle/async/future.h"
+#include "jungle/tasks/runtime/worker.h"
 
 #ifdef JUNGLE_DEBUG_ENABLED
 #    include "jungle/tasks/runtime/debug_host.h"
-#    include "jungle/tasks/runtime/worker.h"
 #    include "jungle/tasks/this_task.h"
 #endif
 
@@ -24,7 +24,19 @@ void future_trace_end() {
     dh.trace_coroutine_end(this_task::worker().id(), this_task::id());
 }
 
+void future_create_placement_executing_guard(raw_storage<tasks::runtime::placement_executing_guard> &guard) {
+    if (tasks::runtime::worker::exists()) {
+        guard.emplace(tasks::this_task::worker().placement_executing());
+    }
+}
+
+void future_destroy_placement_executing_guard(raw_storage<tasks::runtime::placement_executing_guard> &guard) {
+    if (tasks::runtime::worker::exists()) {
+        guard.destroy();
+    }
+}
+
 };  // namespace detail
 #endif
 
-};
+};  // namespace jungle::async

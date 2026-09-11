@@ -80,6 +80,12 @@ bool worker::run_once(std::stop_token &st) {
     return t || fetched_new_task || m_scheduler.has_suspended() || !st.stop_requested();
 }
 
+awake_token::awake_token() {
+    if (m_worker->is_placement_executing()) {
+        panic("不能在启用 placement executing guard 时异步等待");
+    }
+}
+
 void awake_token::suspend(std::coroutine_handle<> resume_coroutine) {
 #ifdef JUNGLE_DEBUG_ENABLED
     m_worker->host_runtime().get_debug_host().trace_coroutine_suspend(m_worker->id(), m_task);

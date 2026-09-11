@@ -18,4 +18,17 @@ struct task_item {
 using task_sender = container::mpsc<task_item>::sender;
 using task_receiver = container::mpsc<task_item>::receiver;
 
+class placement_executing_guard {
+public:
+    placement_executing_guard(bool &flag)
+            : m_flag{flag} {
+        m_flag = true;
+    }
+
+    ~placement_executing_guard() { m_flag = false; }
+
+private:
+    bool &m_flag;
+};
+
 };  // namespace jungle::tasks::runtime
