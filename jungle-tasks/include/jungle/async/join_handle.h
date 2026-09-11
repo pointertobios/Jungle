@@ -12,6 +12,7 @@
 #include "jungle/async/control.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
+#include "jungle/tasks/runtime/scheduler.h"
 #include "jungle/tasks/runtime/worker.h"
 #include "jungle/types/raw_storage.h"
 
@@ -47,11 +48,15 @@ private:
 
         auto final_suspend() {
             struct final_awaitable {
+                tasks::runtime::task_id tid;
                 coroutine_handle this_coroutine;
 
                 bool await_ready() { return false; }
 
-                void await_suspend(std::coroutine_handle<>) { this_coroutine.destroy(); }
+                void await_suspend(std::coroutine_handle<>) {
+                    tasks::runtime::worker::current().get_scheduler().detach_task(tid);
+                    this_coroutine.destroy();
+                }
 
                 void await_resume() {}
             };
@@ -70,7 +75,7 @@ private:
                 w.set_next_resume(std::coroutine_handle{});
                 w.set_suspend_now();
             }
-            return final_awaitable{m_this_coroutine};
+            return final_awaitable{m_task_block->to_task_id(), m_this_coroutine};
         }
 
     protected:

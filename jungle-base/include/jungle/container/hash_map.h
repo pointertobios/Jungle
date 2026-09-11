@@ -116,6 +116,14 @@ class hash_map {
         } st;
         K key;
         [[no_unique_address]] raw_storage<V> value;
+
+        ~slot() noexcept(std::is_nothrow_destructible_v<V>) {
+            if constexpr (concepts::non_void<V>) {
+                if (st == state::filled) {
+                    value.destroy();
+                }
+            }
+        }
     };
 
     constexpr static usize default_slots_size = 64;
@@ -468,6 +476,11 @@ public:
     };
 
     hash_map() = default;
+
+    hash_map(const hash_map &) = delete;
+    hash_map &operator=(const hash_map &) = delete;
+    hash_map(hash_map &&) = delete;
+    hash_map &operator=(hash_map &&) = delete;
 
     iterator begin() { return {*this, m_generation}; }
     iterator_const begin() const { return {*this, m_generation}; }

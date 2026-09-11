@@ -55,6 +55,11 @@ public:
 
         bool is_valid() const { return m_payload != nullptr; }
 
+        [[nodiscard]] bool test_send() pre(is_valid()) {
+            auto e = m_payload->m_tail.load(morder::acquire);
+            return mask(e + 1) == mask(m_payload->m_head.load(morder::acquire));
+        }
+
         [[nodiscard]] bool send(try_move_t<T> value) pre(is_valid()) {
             usize location;
             while (true) {

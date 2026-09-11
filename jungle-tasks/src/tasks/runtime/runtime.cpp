@@ -34,7 +34,7 @@ runtime::runtime(runtime_config config)
         , m_blocking_pool_start{config.m_concurrency}
         , m_worker_id_gen{config.m_concurrency} {
     auto [acceptible_tx, acceptible_rx] = container::mpsc<usize>::queue();
-    m_acceptible_worker_rx = std::move(acceptible_rx);
+    *m_acceptible_worker_rx.lock() = std::move(acceptible_rx);
     for (usize i : std::views::iota((usize)0, config.m_concurrency)) {
         auto [tx, rx] = container::mpsc<task_item>::queue();
         m_senders.emplace_back(std::move(tx));
@@ -47,7 +47,7 @@ runtime::runtime(runtime_config config)
         }
     }
 
-    std::tie(m_acceptible_blocking_worker_tx, m_acceptible_blocking_worker_rx) =
+    std::tie(m_acceptible_blocking_worker_tx, *m_acceptible_blocking_worker_rx.lock()) =
         container::mpsc<usize>::queue();
 
 #ifdef JUNGLE_DEBUG_ENABLED

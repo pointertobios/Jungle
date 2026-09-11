@@ -9,6 +9,8 @@ namespace jungle::tasks::runtime::sched {
 
 void scheduler::attach_task(const task &t) { m_queue.lock()->push_back(t); }
 
+void scheduler::detach_task(task_id tid) { (void)m_preawake.remove(tid); }
+
 std::optional<task> scheduler::next_task() {
     auto &[_, rx] = m_pending_awake;
     {
@@ -66,6 +68,8 @@ void scheduler::resched(task t) {
 void scheduler::suspend(task t) {
     if (!m_preawake.remove(t.m_id)) {
         m_suspended_tasks.insert(t.m_id, try_move(t));
+    } else {
+        resched(try_move(t));
     }
 }
 
