@@ -13,8 +13,6 @@
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
 #include "jungle/tasks/runtime/predecl.h"
-#include "jungle/tasks/runtime/worker.h"
-#include "jungle/tasks/this_task.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/raw_storage.h"
 
@@ -139,9 +137,9 @@ public:
 
     T placement_execute() {
         raw_storage<tasks::runtime::placement_executing_guard> guard;
-        future_create_placement_executing_guard(guard);
+        detail::future_create_placement_executing_guard(guard);
         m_this_coroutine.resume();
-        future_destroy_placement_executing_guard(guard);
+        detail::future_destroy_placement_executing_guard(guard);
 
         if constexpr (concepts::is_void<T>) {
             m_state = future_state::empty;
