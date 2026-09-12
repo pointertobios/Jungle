@@ -16,6 +16,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/ecs/manager.h
     ${IPREF}/game.h
     ${IPREF}/level.h
+    ${IPREF}/service/service.h
 )
 
 set(JUNGLE_SOURCES
@@ -25,6 +26,7 @@ set(JUNGLE_SOURCES
     src/ecs/component.cpp
     src/ecs/entity.cpp
     src/game.cpp
+    src/service/service.cpp
 )
 
 add_library(jungle-core ${JUNGLE_SOURCES})

@@ -23,6 +23,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/types/concepts.h
     ${IPREF}/types/int.h
     ${IPREF}/types/raw_storage.h
+    ${IPREF}/types/string_id.h
     ${IPREF}/types/types.h
     ${IPREF}/types/uchar.h
     ${IPREF}/util/murmur.h

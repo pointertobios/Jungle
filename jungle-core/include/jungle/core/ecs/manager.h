@@ -11,6 +11,7 @@
 #include "jungle/core/ecs/component.h"
 #include "jungle/core/ecs/component_storage.h"
 #include "jungle/core/ecs/entity.h"
+#include "jungle/types/string_id.h"
 #include "jungle/util/type_mutate.h"
 
 namespace jungle::core::ecs {
@@ -29,9 +30,10 @@ public:
     template<typename C>
     static constexpr bool static_mutatable = ComponentManager<C>;
 
-    template<ComponentImpl C>
-    static ManagerCreator get_manager_creator() {
-        return m_creators_of_component.get(type_id::of<C>());
+    static ManagerCreator get_manager_creator(string_id name) {
+        auto res = m_creators_of_component.get(name);
+        contract_assert(res);
+        return *res;
     }
 
     virtual std::vector<std::reference_wrapper<Component<>>> vget_components() = 0;
@@ -44,11 +46,13 @@ protected:
     constexpr Manager(type_id type)
             : util::type_mutate<Manager<>>{type} {}
 
-    static void reigster_manager_creator(type_id type, ManagerCreator creator) {
-        m_creators_of_component.insert(type, creator);
+    static void reigster_manager_creator(string_id name, ManagerCreator creator) {
+        auto res = m_creators_of_component.insert(name, creator);
+        contract_assert(res);
     }
 
-    inline static hash_map<type_id, ManagerCreator> m_creators_of_component{};
+private:
+    inline static hash_map<string_id, ManagerCreator> m_creators_of_component{};
 };
 
 template<ComponentImpl C>
@@ -56,7 +60,7 @@ class Manager<C> final : public Manager<> {
 public:
     static ManagerCreator register_creator() {
         auto crtor = +[] -> std::unique_ptr<Manager<>> { return std::make_unique<Manager>(); };
-        Manager<>::reigster_manager_creator(type_id::of<C>(), crtor);
+        Manager<>::reigster_manager_creator(string_id{std::meta::identifier_of(^^C)}, crtor);
         return crtor;
     }
 

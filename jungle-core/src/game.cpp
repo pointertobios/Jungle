@@ -5,6 +5,9 @@
 
 namespace jungle::core {
 
+Game::Game()
+        : Service{type_id::of<Game>()} {}
+
 async::future<> Game::run() { co_return; }
 
 };  // namespace jungle::core
