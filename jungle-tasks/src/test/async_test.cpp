@@ -38,18 +38,19 @@ erased async_run(const std::vector<async_test_case> &cases) {
 
 int async_collect(erased &&rtwrap) {
     auto &rtw = rtwrap.get<runtime_wrap>();
-    auto &results = rtw.results;
-    usize fail_count{0};
-    for (auto &[area, name, handle] : results) {
-        auto result = handle.blocking_await();
-        if (!result) {
-            std::println("[FAILED] {}::{}\n{}", area, name, result.error());
-            fail_count += 1;
-        } else {
-            std::println("[PASSED] {}::{}", area, name);
+    return rtw.rt->block_on([&results = rtw.results] -> async::future<int> {
+        usize fail_count{0};
+        for (auto &[area, name, handle] : results) {
+            auto result = co_await handle;
+            if (!result) {
+                std::println("[FAILED] {}::{}\n{}", area, name, result.error());
+                fail_count += 1;
+            } else {
+                std::println("[PASSED] {}::{}", area, name);
+            }
         }
-    }
-    return fail_count;
+        co_return fail_count;
+    });
 }
 
 bool _async_test_context_registered =
