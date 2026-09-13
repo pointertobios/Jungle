@@ -31,7 +31,7 @@ using format_string = format_string_type<std::type_identity_t<Args>...>;
 
 };  // namespace fmt
 
-[[noreturn]] void consteval_panic(std::string_view);
+[[noreturn]] consteval void consteval_panic();
 
 [[noreturn]] inline constexpr void
 panic(std::string_view msg, std::source_location sl = std::source_location::current()) {
@@ -40,17 +40,19 @@ panic(std::string_view msg, std::source_location sl = std::source_location::curr
         msg_final = std::format(": {}", msg);
     }
     if consteval {
-        consteval_panic(msg_final);
+        consteval_panic();
     } else {
         std::println(stderr, "Panicked at {}:{}:{}{}", sl.file_name(), sl.line(), sl.column(), msg_final);
         std::abort();
     }
 }
 
-[[noreturn]] inline void panic(std::source_location sl = std::source_location::current()) { panic("", sl); }
+[[noreturn]] inline constexpr void panic(std::source_location sl = std::source_location::current()) {
+    panic("", sl);
+}
 
 template<typename... Args>
-[[noreturn]] inline void panic(fmt::format_string<Args...> fmt, Args &&...args) {
+[[noreturn]] inline constexpr void panic(fmt::format_string<Args...> fmt, Args &&...args) {
     panic(std::vformat(fmt.get(), std::make_format_args(args...)), fmt.source_location());
 }
 
