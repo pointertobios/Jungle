@@ -26,7 +26,6 @@ set(JUNGLE_SOURCES
     src/sync/condition_variable.cpp
     src/tasks/runtime/blocking_worker.cpp
     src/tasks/runtime/debug_host.cpp
-    src/tasks/runtime/debug_host_string_pool.cpp
     src/tasks/runtime/runtime.cpp
     src/tasks/runtime/scheduler.cpp
     src/tasks/runtime/worker.cpp

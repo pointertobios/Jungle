@@ -10,54 +10,62 @@
 namespace jungle::tasks::runtime {
 
 debug_host::debug_host()
-        : daemon{"jg::dbghost"}
-        , m_is_client{false}
-        , m_context_shm{
-              os::shared_memory::create<debug_context>(ustr::format("{}.context", shared_memory_path()))} {
-    if (!m_context_shm.has_value()) {
-        panic("创建调试上下文失败");
-    }
-
-    auto pool0 = create_string_pool(0);
-    m_string_pools_shm.push_back(std::move(pool0.value()));
+        : daemon{"jg::dbhost"}
+        , m_is_client{false} {
+    std::tie(m_cmd_tx, m_cmd_rx) = container::mpsc<command>::queue();
 }
 
 debug_host::debug_host(client_mode_tag)
-        : daemon{"jg::dbghost"}
-        , m_is_client{true}
-        , m_context_shm{os::shared_memory::attach(ustr::format("{}.context", shared_memory_path()))} {
-    if (!m_context_shm.has_value()) {
-        panic("创建调试上下文失败");
-    }
-}
+        : daemon{"jg::dbhost"}
+        , m_is_client{true} {}
 
-debug_host::~debug_host() {}
+std::unique_ptr<debug_host> debug_host::create() { return std::make_unique<debug_host>(); }
 
 std::unique_ptr<debug_host> debug_host::attach() { return std::make_unique<debug_host>(client_mode_tag{}); }
 
-debug_context &debug_host::context() { return *static_cast<debug_context *>(m_context_shm->get()); }
+void debug_host::trace_coroutine_start(usize worker, task_id tid, std::source_location sl) {
+    while (!m_cmd_tx.send(coroutine_start{worker, tid, sl})) {}
+    awake();
+}
 
-void debug_host::trace_coroutine_start(usize, task_id, std::source_location) {}
+void debug_host::trace_coroutine_end(usize worker, task_id tid) {
+    while (!m_cmd_tx.send(coroutine_end{worker, tid})) {}
+    awake();
+}
 
-void debug_host::trace_coroutine_suspend(usize, task_id) {}
+bool debug_host::run_once(std::stop_token &st) {
+    wait_for_awake();
+    while (true) {
+        auto cmd = m_cmd_rx.recv();
+        if (!cmd.has_value()) {
+            if (cmd.error() == container::receive_failed::empty) {
+                break;
+            } else {
+                continue;
+            }
+        }
 
-void debug_host::trace_coroutine_awake(usize, task_id) {}
+        std::visit(
+            [&task_map = this->m_task_map](auto &cmd) {
+                using cmd_type = std::remove_cvref_t<decltype(cmd)>;
+                if constexpr (std::same_as<cmd_type, coroutine_start>) {
+                    task_map[cmd.w][cmd.t].push_back(
+                        std::format(
+                            "{} ({}:{}:{})", cmd.sl.function_name(), cmd.sl.file_name(), cmd.sl.line(),
+                            cmd.sl.column()));
+                } else if constexpr (std::same_as<cmd_type, coroutine_end>) {
+                    if (auto &v = task_map[cmd.w][cmd.t]; !v.empty()) {
+                        v.pop_back();
+                        if (v.size() == 0) {
+                            task_map[cmd.w].erase(cmd.t);
+                        }
+                    }
+                }
+            },
+            cmd.value());
+    }
 
-void debug_host::trace_coroutine_end(usize, task_id) {}
-
-void debug_host::trace_section_start(std::source_location) {}
-
-void debug_host::trace_section_end() {}
-
-bool debug_host::initialize() { return true; }
-
-bool debug_host::run_once(std::stop_token &) { return false; }
-
-void debug_host::finalize() {}
-
-const ustr &debug_host::shared_memory_path() {
-    static auto p = ustr::format("/jungle.debug-host-{:016x}", build_id());
-    return p;
+    return !st.stop_requested();
 }
 
 };  // namespace jungle::tasks::runtime

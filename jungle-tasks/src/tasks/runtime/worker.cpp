@@ -87,17 +87,11 @@ awake_token::awake_token() {
 }
 
 void awake_token::suspend(std::coroutine_handle<> resume_coroutine) {
-#ifdef JUNGLE_DEBUG_ENABLED
-    m_worker->host_runtime().get_debug_host().trace_coroutine_suspend(m_worker->id(), m_task);
-#endif
     m_worker->set_suspend_now();
     m_worker->set_next_resume(resume_coroutine);
 }
 
 void awake_token::awake() {
-#ifdef JUNGLE_DEBUG_ENABLED
-    m_worker->host_runtime().get_debug_host().trace_coroutine_awake(m_worker->id(), m_task);
-#endif
     m_worker->get_scheduler().awake(m_task);
     m_worker->awake();
 }
