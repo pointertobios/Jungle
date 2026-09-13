@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include "jungle/panic.h"
+#include "jungle/assert.h"
 #include "jungle/types/concepts.h"
 #include "jungle/types/int.h"
 #include "jungle/types/raw_storage.h"
@@ -158,7 +158,9 @@ public:
             }
         }
 
-        value_type &operator*() const pre(validative_check() && end_check()) {
+        value_type &operator*() const {
+            JUNGLE_ASSERT(validative_check() && end_check());
+
             if (m_cache_valid) {
                 return *m_cache.get();
             }
@@ -172,7 +174,9 @@ public:
             return *m_cache.get();
         }
 
-        iterator &operator++() pre(validative_check() && end_check()) {
+        iterator &operator++() {
+            JUNGLE_ASSERT(validative_check() && end_check());
+
             m_index.value() += 1;
             m_counter += 1;
             if (m_cache_valid) {
@@ -183,7 +187,9 @@ public:
             return *this;
         }
 
-        iterator operator++(int) pre(validative_check() && end_check()) {
+        iterator operator++(int) {
+            JUNGLE_ASSERT(validative_check() && end_check());
+
             iterator res = *this;
             ++(*this);
             return res;
@@ -248,13 +254,15 @@ public:
             return *this;
         }
 
-        bool operator==(const iterator &rhs) const
-            pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
+        bool operator==(const iterator &rhs) const {
+            JUNGLE_ASSERT(validative_check() && rhs.validative_check() && m_map == rhs.m_map);
+
             return m_index == rhs.m_index;
         }
 
-        friend difference_type operator-(const iterator &lhs, const iterator &rhs)
-            pre(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map) {
+        friend difference_type operator-(const iterator &lhs, const iterator &rhs) {
+            JUNGLE_ASSERT(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map);
+
             return static_cast<difference_type>(lhs.m_counter) - static_cast<difference_type>(rhs.m_counter);
         }
 
@@ -326,7 +334,9 @@ public:
             }
         }
 
-        const value_type &operator*() const pre(validative_check() && end_check()) {
+        const value_type &operator*() const {
+            JUNGLE_ASSERT(validative_check() && end_check());
+
             if (m_cache_valid) {
                 return *m_cache.get();
             }
@@ -340,7 +350,9 @@ public:
             return *m_cache.get();
         }
 
-        iterator_const &operator++() pre(validative_check() && end_check()) {
+        iterator_const &operator++() {
+            JUNGLE_ASSERT(validative_check() && end_check());
+
             m_index.value() += 1;
             m_counter += 1;
             if (m_cache_valid) {
@@ -351,7 +363,9 @@ public:
             return *this;
         }
 
-        iterator_const operator++(int) pre(validative_check() && end_check()) {
+        iterator_const operator++(int) {
+            JUNGLE_ASSERT(validative_check() && end_check());
+
             iterator_const res = *this;
             ++(*this);
             return res;
@@ -416,13 +430,15 @@ public:
             return *this;
         }
 
-        bool operator==(const iterator_const &rhs) const
-            pre(validative_check() && rhs.validative_check() && m_map == rhs.m_map) {
+        bool operator==(const iterator_const &rhs) const {
+            JUNGLE_ASSERT(validative_check() && rhs.validative_check() && m_map == rhs.m_map);
+
             return m_index == rhs.m_index;
         }
 
-        friend difference_type operator-(const iterator_const &lhs, const iterator_const &rhs)
-            pre(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map) {
+        friend difference_type operator-(const iterator_const &lhs, const iterator_const &rhs) {
+            JUNGLE_ASSERT(lhs.validative_check() && rhs.validative_check() && lhs.m_map == rhs.m_map);
+
             return static_cast<difference_type>(lhs.m_counter) - static_cast<difference_type>(rhs.m_counter);
         }
 

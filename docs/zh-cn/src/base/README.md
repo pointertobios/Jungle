@@ -34,7 +34,6 @@ include/jungle/
 
 - C++23 标准（启用了 `-std=c++23`）
 - 启用反射扩展（`-freflection`）
-- 启用契约（`-fcontracts`）
 - 禁用 RTTI 和异常（`-fno-rtti -fno-exceptions`）
 
 ## 关键组件

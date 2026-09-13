@@ -193,7 +193,7 @@ JUNGLE_ASYNC_TEST(example_predicate_wait) {
 
 ## 注意事项
 
-- **编译器**：仅 GCC + C++26 扩展（`-freflection`、`-fcontracts`）
+- **编译器**：仅 GCC + C++26 扩展（`-freflection`）
 - **字符串**：主要使用 `jungle::ustr`
 - **容器**：优先使用 `jungle::hash_map` 而非 `std::unordered_map`
 - **固定宽度整数**：使用 `jungle::types/int.h` 中的类型

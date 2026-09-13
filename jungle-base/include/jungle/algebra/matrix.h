@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "jungle/algebra/scalar.h"
+#include "jungle/assert.h"
 #include "jungle/types/int.h"
 
 namespace jungle::algebra {
@@ -34,9 +35,13 @@ public:
         }
     }
 
-    constexpr T &operator[](usize x, usize y) pre(x < Line && y < Row) { return m_data[x * Row + y]; }
+    constexpr T &operator[](usize x, usize y) {
+        JUNGLE_ASSERT(x < Line && y < Row);
+        return m_data[x * Row + y];
+    }
 
-    constexpr const T &operator[](usize x, usize y) const pre(x < Line && y < Row) {
+    constexpr const T &operator[](usize x, usize y) const {
+        JUNGLE_ASSERT(x < Line && y < Row);
         return m_data[x * Row + y];
     }
 
@@ -160,9 +165,15 @@ public:
         }
     }
 
-    constexpr T &operator[](usize i) pre(i < N) { return matrix<T, N, 1>::operator[](i, 0); }
+    constexpr T &operator[](usize i) {
+        JUNGLE_ASSERT(i < N);
+        return matrix<T, N, 1>::operator[](i, 0);
+    }
 
-    constexpr const T &operator[](usize i) const pre(i < N) { return matrix<T, N, 1>::operator[](i, 0); }
+    constexpr const T &operator[](usize i) const {
+        JUNGLE_ASSERT(i < N);
+        return matrix<T, N, 1>::operator[](i, 0);
+    }
 
     vector normalize() const {
         return matrix<T, N, 1>::multiply(scalar_const<T>::one / matrix<T, N, 1>::norm());

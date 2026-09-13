@@ -46,7 +46,7 @@ The constructor is `protected`, callable only by derived classes. Derived classe
 | -------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `is<U>() const -> bool`          | Whether the current instance is of type `U`. Compile-time requires `U` satisfies `static_mutatable`  |
 | `is(type_id) const -> bool`      | Whether the current instance's type ID matches the given `type_id` (no compile-time type constraint) |
-| `as<U>() -> U &`                 | Downcast to `U&`. `pre(is<U>())` contract guarantee; checked in Debug mode                           |
+| `as<U>() -> U &`                 | Downcast to `U&`. `JUNGLE_ASSERT(is<U>())`, checked in Debug mode only                               |
 | `as<U>() const -> const U &`     | const overload                                                                                       |
 | `try_as<U>() -> U *`             | Safe downcast; returns `nullptr` on type mismatch                                                    |
 | `try_as<U>() const -> const U *` | const overload                                                                                       |
@@ -71,10 +71,10 @@ The former is used for type-safe compile-time dispatch; the latter is for scenar
 ```cpp
 template<typename U>
     requires static_mutatable<U>
-constexpr U &as() pre(is<U>());
+constexpr U &as();
 ```
 
-`as<U>()` performs a downcast. The `pre(is<U>())` contract requires the caller to guarantee type matching in Debug mode; Release mode uses a quick check. A type mismatch triggers `panic()`.
+`as<U>()` performs a downcast. In Debug mode `JUNGLE_ASSERT(is<U>())` verifies that the type matches and triggers `panic()` on mismatch; in Release mode the assertion is removed entirely and no check is performed.
 
 Typical usage:
 
@@ -95,7 +95,7 @@ template<typename U>
 constexpr U *try_as();
 ```
 
-`try_as<U>()` is the safe, non-panicking version — returns `nullptr` on type mismatch. Suitable for cases where type matching cannot be guaranteed in advance or contract checks are undesirable:
+`try_as<U>()` is the safe, non-panicking version — returns `nullptr` on type mismatch. Suitable for cases where type matching cannot be guaranteed in advance or assertion panics are undesirable:
 
 ```cpp
 void maybe_process(Component<> &base) {
@@ -132,6 +132,6 @@ This allows the system to operate uniformly on `Component<> &` or `Manager<> &` 
 | Tier         | Mechanism                     | Failure Behavior           |
 | ------------ | ----------------------------- | -------------------------- |
 | Compile-time | `static_mutatable` constraint | Compilation error          |
-| Debug        | `pre(is<U>())` contract       | `panic()` aborts process   |
-| Release      | `pre(is<U>())` quick check    | `panic()` aborts process   |
+| Debug        | `JUNGLE_ASSERT(is<U>())`      | `panic()` aborts process   |
+| Release      | No check (assertion removed)  | Undefined behavior         |
 | Runtime-safe | `try_as<U>()` returns nullptr | Caller checks null pointer |

@@ -7,6 +7,7 @@
 #include <memory>
 #include <type_traits>
 
+#include "jungle/assert.h"
 #include "jungle/async/future.h"
 #include "jungle/container/hash_map.h"
 #include "jungle/types/string_id.h"
@@ -35,7 +36,7 @@ public:
     static ServiceCreator register_creator() {
         auto ctor = +[] -> std::unique_ptr<Service> { return std::make_unique<S>(); };
         auto res = m_services_of_components.insert(string_id{std::meta::identifier_of(^^S)}, ctor);
-        contract_assert(res);
+        JUNGLE_ASSERT(res);
         return ctor;
     }
 
@@ -49,7 +50,7 @@ protected:
 
     static void register_service_creator(string_id name, ServiceCreator creator) {
         auto res = m_services_of_components.insert(name, creator);
-        contract_assert(res);
+        JUNGLE_ASSERT(res);
     }
 
 private:

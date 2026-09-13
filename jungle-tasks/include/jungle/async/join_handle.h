@@ -9,6 +9,7 @@
 #include <semaphore>
 #include <utility>
 
+#include "jungle/assert.h"
 #include "jungle/async/control.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
@@ -86,7 +87,8 @@ private:
     };
 
     struct promise_void_mixin : public promise_base {
-        void return_void() pre(promise_base::return_state_valid()) {
+        void return_void() {
+            JUNGLE_ASSERT(promise_base::return_state_valid());
             auto s = promise_base::m_task_block->m_state.exchange(future_state::complete, morder::acq_rel);
             if (s == future_state::awaited) {
                 promise_base::m_task_block->m_awake_token.awake();
@@ -96,7 +98,8 @@ private:
     };
 
     struct promise_value_mixin : public promise_base {
-        void return_value(try_move_t<T> value) pre(promise_base::return_state_valid()) {
+        void return_value(try_move_t<T> value) {
+            JUNGLE_ASSERT(promise_base::return_state_valid());
             promise_base::m_task_block->m_storage.emplace(try_move(value));
             auto s = promise_base::m_task_block->m_state.exchange(future_state::complete, morder::acq_rel);
             if (s == future_state::awaited) {
@@ -127,13 +130,17 @@ public:
     join_handle(const join_handle &) = delete;
     join_handle &operator=(const join_handle &) = delete;
 
-    join_handle(join_handle &&rhs) pre(!rhs.is_empty())
+    join_handle(join_handle &&rhs)
             : m_this_coroutine{rhs.m_this_coroutine}
             , m_task_block{std::move(rhs.m_task_block)} {
+        JUNGLE_ASSERT(!is_empty());
+
         rhs.m_this_coroutine = coroutine_handle{};
     }
 
-    join_handle &operator=(join_handle &&rhs) pre(!rhs.is_empty() && is_empty()) {
+    join_handle &operator=(join_handle &&rhs) {
+        JUNGLE_ASSERT(!rhs.is_empty() && is_empty());
+
         if (this != &rhs) {
             this->~join_handle();
             new (this) join_handle{std::move(rhs)};
@@ -143,11 +150,15 @@ public:
 
     bool is_empty() const { return !m_task_block; }
 
-    bool await_ready() pre(!is_empty()) {
+    bool await_ready() {
+        JUNGLE_ASSERT(!is_empty());
+
         return m_task_block->m_state.load(morder::acquire) == future_state::complete;
     }
 
-    void await_suspend(std::coroutine_handle<> waiter_coroutine) pre(!is_empty()) {
+    void await_suspend(std::coroutine_handle<> waiter_coroutine) {
+        JUNGLE_ASSERT(!is_empty());
+
         tasks::runtime::awake_token awake_token{};
         m_task_block->m_awake_token = awake_token;
         if (future_state e{future_state::non_complete}; m_task_block->m_state.compare_exchange_strong(
@@ -156,9 +167,11 @@ public:
         }
     }
 
-    T await_resume() pre(!is_empty()) {
+    T await_resume() {
+        JUNGLE_ASSERT(!is_empty());
+
         auto s = m_task_block->m_state.load(morder::acquire);
-        contract_assert(s == future_state::complete);
+        JUNGLE_ASSERT(s == future_state::complete);
 
         if constexpr (concepts::is_void<T>) {
             m_task_block.reset();

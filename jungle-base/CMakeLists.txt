@@ -4,6 +4,7 @@
 set(IPREF "include/jungle") # Include prefix for headers
 
 set(JUNGLE_HEADERS
+    ${IPREF}/assert.h
     ${IPREF}/algebra/matrix.h
     ${IPREF}/algebra/scalar.h
     ${IPREF}/build_id.h
@@ -37,7 +38,6 @@ set(JUNGLE_SOURCES
     src/build_id.cpp
     src/os/process.cpp
     src/runtime/daemon.cpp
-    src/panic.cpp
     src/types/uchar.cpp
     src/util/parse.cpp
 )
@@ -70,13 +70,9 @@ set(JUNGLE_OPTIONS
     -Wpedantic
     -Werror
     -freflection
-    -fcontracts
     -fno-rtti
     -fno-exceptions
     -fconcepts-diagnostics-depth=6
-    $<$<CONFIG:Debug>:-fcontract-evaluation-semantic=enforce>
-    $<$<CONFIG:RelWithDebInfo>:-fcontract-evaluation-semantic=enforce>
-    $<$<CONFIG:Release>:-fcontract-evaluation-semantic=quick_enforce>
 )
 
 include(JungleBuildId)

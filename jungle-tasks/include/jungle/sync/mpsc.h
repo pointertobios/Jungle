@@ -5,6 +5,7 @@
 
 #include <memory>
 
+#include "jungle/assert.h"
 #include "jungle/async/future.h"
 #include "jungle/container/mpsc.h"
 #include "jungle/sync/condition_variable.h"
@@ -31,11 +32,15 @@ public:
 
         bool is_valid() const { return m_payload != nullptr; }
 
-        auto try_send(try_move_t<T> value) pre(is_valid()) {
+        auto try_send(try_move_t<T> value) {
+            JUNGLE_ASSERT(is_valid());
+
             return m_sync_sender.send(std::forward<decltype(value)>(value));
         }
 
-        async::future<bool> send(try_move_t<T> value) pre(is_valid()) {
+        async::future<bool> send(try_move_t<T> value) {
+            JUNGLE_ASSERT(is_valid());
+
             while (true) {
                 if (stopped()) {
                     co_return false;
@@ -75,9 +80,15 @@ public:
 
         bool is_valid() const { return m_payload != nullptr; }
 
-        auto try_recv() pre(is_valid()) { return m_sync_receiver.recv(); }
+        auto try_recv() {
+            JUNGLE_ASSERT(is_valid());
 
-        async::future<T> recv() pre(is_valid() && !stopped()) {
+            return m_sync_receiver.recv();
+        }
+
+        async::future<T> recv() {
+            JUNGLE_ASSERT(is_valid() && !stopped());
+
             while (true) {
                 if (auto res = m_sync_receiver.recv(); res.has_value()) {
                     m_payload->m_send_cv.notify_one();

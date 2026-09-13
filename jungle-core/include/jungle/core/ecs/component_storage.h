@@ -10,6 +10,7 @@
 #include <ranges>
 #include <type_traits>
 
+#include "jungle/assert.h"
 #include "jungle/container/hash_map.h"
 #include "jungle/core/ecs/component.h"
 #include "jungle/preusing.h"
@@ -196,7 +197,7 @@ public:
     void destroy(ComponentID id) {
         usize seg_index = segment_index(id);
         auto index = m_segment_of_component.get(id);
-        contract_assert(index != nullptr);
+        JUNGLE_ASSERT(index != nullptr);
         m_storage[*index].components[seg_index].component.destroy();
         m_bitmaps[*index].map[seg_index] = false;
         new (&m_free_list_heads[seg_index])
@@ -207,14 +208,14 @@ public:
     C &get_component(ComponentID id) {
         usize seg_index = segment_index(id);
         auto index = m_segment_of_component.get(id);
-        contract_assert(index != nullptr);
+        JUNGLE_ASSERT(index != nullptr);
         return *m_storage[*index].components[seg_index].component.get();
     }
 
     const C &get_component(ComponentID id) const {
         usize seg_index = segment_index(id);
         auto index = m_segment_of_component.get(id);
-        contract_assert(index != nullptr);
+        JUNGLE_ASSERT(index != nullptr);
         return *m_storage[*index].components[seg_index].component.get();
     }
 
@@ -250,13 +251,13 @@ public:
 
     C &get_component(ComponentID id) {
         auto ptr = m_components.get(id);
-        contract_assert(ptr != nullptr);
+        JUNGLE_ASSERT(ptr != nullptr);
         return **ptr;
     }
 
     const C &get_component(ComponentID id) const {
         auto ptr = m_components.get(id);
-        contract_assert(ptr != nullptr);
+        JUNGLE_ASSERT(ptr != nullptr);
         return **ptr;
     }
 

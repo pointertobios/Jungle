@@ -1,10 +1,12 @@
 // Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
 // SPDX-License-Identifier: MIT
 
+#include "jungle/tasks/runtime/runtime.h"
+
 #include <memory>
 #include <semaphore>
 
-#include "jungle/tasks/runtime/runtime.h"
+#include "jungle/assert.h"
 #include "jungle/tasks/runtime/worker.h"
 #include "jungle/types/concepts.h"
 
@@ -65,10 +67,16 @@ runtime::~runtime() {
 }
 
 void runtime::main_loop() {
+    JUNGLE_ASSERT(!m_multi_threaded);
+
     auto st = m_stop.get_token();
     m_workers[0]->run(st);
 }
 
-void runtime::stop() { m_stop.request_stop(); }
+void runtime::stop() {
+    JUNGLE_ASSERT(!m_multi_threaded);
+
+    m_stop.request_stop();
+}
 
 };  // namespace jungle::tasks::runtime

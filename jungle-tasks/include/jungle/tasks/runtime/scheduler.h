@@ -43,7 +43,7 @@ public:
     void detach_task(task_id tid);
     std::optional<task> next_task();
     void resched(task t);
-    void suspend(task t) pre(t.m_id == m_current_task);
+    void suspend(task t);
     void awake(task_id id);
 
     bool has_suspended() const;

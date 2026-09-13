@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "jungle/assert.h"
 #include "jungle/async/future.h"
 #include "jungle/container/hash_map.h"
 #include "jungle/core/asset/embedded_tree.h"
@@ -36,7 +37,7 @@ EmbeddedJamlProvider::EmbeddedJamlProvider() {
     struct indexer {
         static async::future<> index(const EmbeddedAssetNode *list, u128 path_hash) {
             for (auto node = list; node; node = node->next) {
-                contract_assert(!node->children || !node->data.size());
+                JUNGLE_ASSERT(!node->children || !node->data.size());
 
                 u128 current_full_hash = path_hash ^ util::hash_str(node->name);
 

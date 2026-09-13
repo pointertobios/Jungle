@@ -5,6 +5,7 @@
 
 #include <functional>
 
+#include "jungle/assert.h"
 #include "jungle/debug.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
@@ -39,5 +40,8 @@ private:
 
 template<>
 struct std::hash<jungle::core::ecs::Entity> {
-    std::size_t operator()(const jungle::core::ecs::Entity &entity) const pre(entity) { return entity.m_id; }
+    std::size_t operator()(const jungle::core::ecs::Entity &entity) const {
+        JUNGLE_ASSERT(entity);
+        return entity.m_id;
+    }
 };

@@ -8,6 +8,7 @@
 #include <limits>
 #include <semaphore>
 
+#include "jungle/assert.h"
 #include "jungle/async/control.h"
 #include "jungle/runtime/daemon.h"
 #include "jungle/tasks/runtime/predecl.h"
@@ -47,7 +48,10 @@ public:
     void set_suspend_now();
     void set_yield_now();
 
-    placement_executing_guard placement_executing() pre(!m_placement_executing) { return {m_placement_executing}; }
+    placement_executing_guard placement_executing() {
+        JUNGLE_ASSERT(!m_placement_executing);
+        return {m_placement_executing};
+    }
 
     bool is_placement_executing() const { return m_placement_executing; }
 
@@ -75,7 +79,7 @@ private:
 
 class awake_token {
 public:
-    awake_token() pre(worker::exists());
+    awake_token();
 
     ~awake_token() = default;
 
@@ -91,7 +95,7 @@ public:
 
     bool operator==(const awake_token &rhs) const { return m_worker == rhs.m_worker && m_task == rhs.m_task; }
 
-    void suspend(std::coroutine_handle<> resume_coroutine) pre(*m_worker == worker::current());
+    void suspend(std::coroutine_handle<> resume_coroutine);
 
     void awake();
 

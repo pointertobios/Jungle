@@ -10,6 +10,7 @@
 #include <thread>
 #include <type_traits>
 
+#include "jungle/assert.h"
 #include "jungle/async/future.h"
 #include "jungle/async/invoke.h"
 #include "jungle/async/join_handle.h"
@@ -86,7 +87,9 @@ public:
     }
 
     template<typename... Args>
-    auto block_on(async::async_function<Args...> auto &&fn, Args &&...args) pre(m_multi_threaded) {
+    auto block_on(async::async_function<Args...> auto &&fn, Args &&...args) {
+        JUNGLE_ASSERT(m_multi_threaded);
+
         auto jh = spawn(std::forward<decltype(fn)>(fn), std::forward<Args>(args)...);
 
         if constexpr (concepts::is_void<typename decltype(jh)::output_type>) {
@@ -98,8 +101,9 @@ public:
 
     template<typename... Args>
     auto spawn_blocking(std::invocable<Args...> auto &&fn, Args &&...args)
-        requires(!async::async_function<decltype(fn), Args...>)
-    pre(m_multi_threaded) {
+        requires(!async::async_function<decltype(fn), Args...>) {
+        JUNGLE_ASSERT(m_multi_threaded);
+
         auto jh = blocking_task_coroutine(std::forward<decltype(fn)>(fn), std::forward<Args>(args)...);
 
         usize x;
@@ -134,9 +138,9 @@ public:
         return jh;
     }
 
-    void main_loop() pre(!m_multi_threaded);
+    void main_loop();
 
-    void stop() pre(!m_multi_threaded);
+    void stop();
 
 private:
     auto task_coroutine(async::future_type auto future_value)

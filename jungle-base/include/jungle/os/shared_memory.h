@@ -6,6 +6,7 @@
 #include <atomic>
 #include <optional>
 
+#include "jungle/assert.h"
 #include "jungle/constants.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/int.h"
@@ -56,7 +57,11 @@ public:
     void *get() const;
 
     /// 设置析构回调，仅创建方（create 模式）可调用
-    void set_dtor(void (*dtor)(void *)) pre(m_is_create) { m_dtor = dtor; }
+    void set_dtor(void (*dtor)(void *)) {
+        JUNGLE_ASSERT(m_is_create);
+
+        m_dtor = dtor;
+    }
 
 private:
     shared_memory(bool is_create)

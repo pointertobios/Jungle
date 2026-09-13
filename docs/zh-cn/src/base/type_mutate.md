@@ -46,7 +46,7 @@ protected:
 | -------------------------------- | --------------------------------------------------------------- |
 | `is<U>() const -> bool`          | 当前实例是否为 `U` 类型。编译期要求 `U` 满足 `static_mutatable` |
 | `is(type_id) const -> bool`      | 当前实例的类型 ID 是否匹配指定 `type_id`（无编译期类型约束）    |
-| `as<U>() -> U &`                 | 向下转型为 `U&`。`pre(is<U>())` 契约保证，Debug 模式检查        |
+| `as<U>() -> U &`                 | 向下转型为 `U&`。`JUNGLE_ASSERT(is<U>())`，仅 Debug 模式检查   |
 | `as<U>() const -> const U &`     | const 重载版                                                    |
 | `try_as<U>() -> U *`             | 安全向下转型，类型不匹配返回 `nullptr`                          |
 | `try_as<U>() const -> const U *` | const 重载版                                                    |
@@ -71,10 +71,10 @@ constexpr bool is(type_id type) const;
 ```cpp
 template<typename U>
     requires static_mutatable<U>
-constexpr U &as() pre(is<U>());
+constexpr U &as();
 ```
 
-`as<U>()` 执行向下转型。`pre(is<U>())` 契约要求调用方在 Debug 模式下保证类型匹配，Release 模式下为快速检查。若类型不匹配则触发 `panic()`。
+`as<U>()` 执行向下转型。Debug 模式下通过 `JUNGLE_ASSERT(is<U>())` 校验类型是否匹配，不匹配时触发 `panic()`；Release 模式下该断言会被完全移除，不做任何检查。
 
 典型用法：
 
@@ -95,7 +95,7 @@ template<typename U>
 constexpr U *try_as();
 ```
 
-`try_as<U>()` 是安全的非 panic 版本——类型不匹配时返回 `nullptr`。适合无法预先保证类型匹配、也不想触发契约检查的场景：
+`try_as<U>()` 是安全的非 panic 版本——类型不匹配时返回 `nullptr`。适合无法预先保证类型匹配、也不想触发断言 panic 的场景：
 
 ```cpp
 void maybe_process(Component<> &base) {
@@ -129,9 +129,9 @@ type_id type() const;
 
 ## 类型安全层级
 
-| 层级       | 机制                       | 失败行为             |
-| ---------- | -------------------------- | -------------------- |
-| 编译期     | `static_mutatable` 约束    | 编译错误             |
-| Debug      | `pre(is<U>())` 契约        | `panic()` 中止进程   |
-| Release    | `pre(is<U>())` 快速检查    | `panic()` 中止进程   |
-| 运行时安全 | `try_as<U>()` 返回 nullptr | 调用方自行检查空指针 |
+| 层级       | 机制                         | 失败行为             |
+| ---------- | ---------------------------- | -------------------- |
+| 编译期     | `static_mutatable` 约束      | 编译错误             |
+| Debug      | `JUNGLE_ASSERT(is<U>())`     | `panic()` 中止进程   |
+| Release    | 无检查（断言被移除）         | 未定义行为           |
+| 运行时安全 | `try_as<U>()` 返回 nullptr   | 调用方自行检查空指针 |

@@ -1,9 +1,11 @@
 // Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
 // SPDX-License-Identifier: MIT
 
+#include "jungle/tasks/runtime/scheduler.h"
+
 #include <ranges>
 
-#include "jungle/tasks/runtime/scheduler.h"
+#include "jungle/assert.h"
 
 namespace jungle::tasks::runtime::sched {
 
@@ -66,6 +68,8 @@ void scheduler::resched(task t) {
 }
 
 void scheduler::suspend(task t) {
+    JUNGLE_ASSERT(t.m_id == m_current_task);
+
     if (!m_preawake.remove(t.m_id)) {
         m_suspended_tasks.insert(t.m_id, try_move(t));
     } else {

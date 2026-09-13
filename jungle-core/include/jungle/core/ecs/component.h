@@ -6,6 +6,7 @@
 #include <concepts>
 #include <functional>
 
+#include "jungle/assert.h"
 #include "jungle/core/ecs/entity.h"
 #include "jungle/panic.h"
 #include "jungle/preusing.h"
@@ -33,7 +34,10 @@ public:
 
     ustr debug() const;
 
-    u64 underlying() const pre(m_id != INVALID) { return m_id; }
+    u64 underlying() const {
+        JUNGLE_ASSERT(m_id != INVALID);
+        return m_id;
+    }
 
 private:
     u64 m_id{INVALID};
@@ -99,5 +103,8 @@ protected:
 
 template<>
 struct std::hash<jungle::core::ecs::ComponentID> {
-    std::size_t operator()(const jungle::core::ecs::ComponentID &id) const pre(id) { return id.m_id; }
+    std::size_t operator()(const jungle::core::ecs::ComponentID &id) const {
+        JUNGLE_ASSERT(id);
+        return id.m_id;
+    }
 };

@@ -34,7 +34,6 @@ include/jungle/
 
 - C++23 standard (enabled with `-std=c++23`)
 - Reflection extension enabled (`-freflection`)
-- Contracts enabled (`-fcontracts`)
 - RTTI and exceptions disabled (`-fno-rtti -fno-exceptions`)
 
 ## Key Components

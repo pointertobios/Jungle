@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include "jungle/assert.h"
 #include "jungle/core/ecs/component.h"
 #include "jungle/core/ecs/component_storage.h"
 #include "jungle/core/ecs/entity.h"
@@ -32,7 +33,7 @@ public:
 
     static ManagerCreator get_manager_creator(string_id name) {
         auto res = m_creators_of_component.get(name);
-        contract_assert(res);
+        JUNGLE_ASSERT(res);
         return *res;
     }
 
@@ -48,7 +49,7 @@ protected:
 
     static void reigster_manager_creator(string_id name, ManagerCreator creator) {
         auto res = m_creators_of_component.insert(name, creator);
-        contract_assert(res);
+        JUNGLE_ASSERT(res);
     }
 
 private:

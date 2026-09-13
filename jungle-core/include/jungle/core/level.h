@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "jungle/assert.h"
 #include "jungle/container/hash_map.h"
 #include "jungle/core/component/motion.h"
 #include "jungle/core/component/transform.h"
@@ -28,11 +29,15 @@ public:
     bool has_manager(type_id type) const { return m_managers.contains(type); }
 
     template<ecs::ComponentManager M>
-    M &get_manager() pre(has_manager<M>()) {
+    M &get_manager() {
+        JUNGLE_ASSERT(has_manager<M>());
         return m_managers.get(type_id::of<M>())->template as<M>();
     }
 
-    ecs::Manager<> &get_manager(type_id type) pre(has_manager(type)) { return **m_managers.get(type); }
+    ecs::Manager<> &get_manager(type_id type) {
+        JUNGLE_ASSERT(has_manager(type));
+        return **m_managers.get(type);
+    }
 
     template<ecs::ComponentImpl C>
         requires(has_manager<ecs::Manager<C>>())

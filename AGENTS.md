@@ -7,12 +7,11 @@ Jungle 是一个实验性 C++26 游戏引擎，详情参见 [README.md](./README
 本项目依赖 **GCC 且需要 C++26 扩展**（Clang/MSVC 不支持），关键标志：
 
 - `-freflection` — P2996 编译期反射
-- `-fcontracts` — 契约编程（Debug 强制检查，Release 快速检查）
 - `-fno-rtti` / `-fno-exceptions` — 禁用 RTTI 与异常
 - `-fconcepts-diagnostics-depth=6` — 概念（concept）诊断深度
 - `-Wall -Wextra -Wpedantic -Werror` — 严格警告
 
-**AI 编码注意**：不要使用 `try/catch`、`throw`、`dynamic_cast`、`typeid`。错误处理使用 `jungle::panic()` 或 `std::expected`。契约使用 `pre()` / `post()` 属性。
+**AI 编码注意**：不要使用 `try/catch`、`throw`、`dynamic_cast`、`typeid`。错误处理使用 `jungle::panic()` 或 `std::expected`。前置/后置条件断言统一使用 `JUNGLE_ASSERT`（仅 Debug 模式生效）。
 
 ## 模块架构
 

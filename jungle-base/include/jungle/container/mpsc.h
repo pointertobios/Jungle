@@ -10,6 +10,7 @@
 #include <tuple>
 #include <vector>
 
+#include "jungle/assert.h"
 #include "jungle/constants.h"
 #include "jungle/types/concepts.h"
 #include "jungle/types/int.h"
@@ -55,12 +56,16 @@ public:
 
         bool is_valid() const { return m_payload != nullptr; }
 
-        [[nodiscard]] bool test_send() pre(is_valid()) {
+        [[nodiscard]] bool test_send() {
+            JUNGLE_ASSERT(is_valid());
+
             auto e = m_payload->m_tail.load(morder::acquire);
             return mask(e + 1) == mask(m_payload->m_head.load(morder::acquire));
         }
 
-        [[nodiscard]] bool send(try_move_t<T> value) pre(is_valid()) {
+        [[nodiscard]] bool send(try_move_t<T> value) {
+            JUNGLE_ASSERT(is_valid());
+
             usize location;
             while (true) {
                 auto e = m_payload->m_tail.load(morder::acquire);
@@ -108,7 +113,9 @@ public:
 
         bool is_valid() const { return m_payload != nullptr; }
 
-        [[nodiscard]] std::expected<void, receive_failed> test_recv() noexcept pre(is_valid()) {
+        [[nodiscard]] std::expected<void, receive_failed> test_recv() noexcept {
+            JUNGLE_ASSERT(is_valid());
+
             auto location = m_payload->m_head.load(morder::acquire);
             if (mask(location) == mask(m_payload->m_tail.load(morder::acquire))) {
                 return std::unexpected{receive_failed::empty};
@@ -123,7 +130,9 @@ public:
             return {};
         }
 
-        [[nodiscard]] std::expected<T, receive_failed> recv() pre(is_valid()) {
+        [[nodiscard]] std::expected<T, receive_failed> recv() {
+            JUNGLE_ASSERT(is_valid());
+
             usize location;
 
             while (true) {

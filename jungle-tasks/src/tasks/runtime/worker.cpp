@@ -1,12 +1,14 @@
 // Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
 // SPDX-License-Identifier: MIT
 
+#include "jungle/tasks/runtime/worker.h"
+
 #include <coroutine>
 #include <optional>
 
+#include "jungle/assert.h"
 #include "jungle/os/process.h"
 #include "jungle/tasks/runtime/debug_host.h"
-#include "jungle/tasks/runtime/worker.h"
 #include "jungle/util/rng.h"
 
 namespace jungle::tasks::runtime {
@@ -81,12 +83,16 @@ bool worker::run_once(std::stop_token &st) {
 }
 
 awake_token::awake_token() {
+    JUNGLE_ASSERT(worker::exists());
+
     if (m_worker->is_placement_executing()) {
         panic("不能在启用 placement executing guard 时异步等待");
     }
 }
 
 void awake_token::suspend(std::coroutine_handle<> resume_coroutine) {
+    JUNGLE_ASSERT(*m_worker == worker::current());
+
     m_worker->set_suspend_now();
     m_worker->set_next_resume(resume_coroutine);
 }

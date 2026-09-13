@@ -7,6 +7,7 @@
 #include <source_location>
 #include <utility>
 
+#include "jungle/assert.h"
 #include "jungle/async/control.h"
 #include "jungle/async/future.h"
 #include "jungle/meta.h"
@@ -74,14 +75,15 @@ private:
     };
 
     struct promise_void_mixin : public promise_base {
-        void return_void() pre(promise_base::m_future->m_state == future_state::non_complete) {
+        void return_void() {
+            JUNGLE_ASSERT(promise_base::m_future->m_state == future_state::non_complete);
             promise_base::m_future->m_state = future_state::complete;
         }
     };
 
     struct promise_value_mixin : public promise_base {
-        void return_value(try_move_t<T> value)
-            pre(promise_base::m_future->m_state == future_state::non_complete) {
+        void return_value(try_move_t<T> value) {
+            JUNGLE_ASSERT(promise_base::m_future->m_state == future_state::non_complete);
             promise_base::m_future->m_storage.emplace(try_move(value));
             promise_base::m_future->m_state = future_state::complete;
         }
@@ -114,18 +116,22 @@ public:
     future(const future &) = delete;
     future &operator=(const future &) = delete;
 
-    future(future &&rhs) pre(!rhs.is_empty())
+    future(future &&rhs)
             : m_promise{rhs.m_promise}
             , m_state{rhs.m_state}
             , m_this_coroutine{rhs.m_this_coroutine}
             , m_waiter_coroutine{rhs.m_waiter_coroutine}
             , m_bound_invocable{std::move(rhs.m_bound_invocable)} {
+        JUNGLE_ASSERT(!rhs.is_empty());
+
         rhs.m_this_coroutine = coroutine_handle{};
 
         m_promise->m_future = this;
     }
 
-    future &operator=(future &&rhs) pre(!rhs.is_empty() && is_empty()) {
+    future &operator=(future &&rhs) {
+        JUNGLE_ASSERT(!rhs.is_empty() && is_empty());
+
         if (this != &rhs) {
             this->~future();
             new (this) future{std::move(rhs)};
@@ -152,9 +158,14 @@ public:
         }
     }
 
-    bool await_ready() pre(!is_empty()) { return false; }
+    bool await_ready() {
+        JUNGLE_ASSERT(!is_empty());
+        return false;
+    }
 
-    auto await_suspend(std::coroutine_handle<> waiter) pre(!is_empty()) {
+    auto await_suspend(std::coroutine_handle<> waiter) {
+        JUNGLE_ASSERT(!is_empty());
+        
 #ifdef JUNGLE_DEBUG_ENABLED
         detail::future_trace_start(m_promise->m_source_location);
 #endif
@@ -163,7 +174,8 @@ public:
         return m_this_coroutine;
     }
 
-    T await_resume() pre(!is_empty()) {
+    T await_resume() {
+        JUNGLE_ASSERT(!is_empty());
 #ifdef JUNGLE_DEBUG_ENABLED
         detail::future_trace_end();
 #endif

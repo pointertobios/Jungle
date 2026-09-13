@@ -6,6 +6,7 @@
 #include <atomic>
 #include <type_traits>
 
+#include "jungle/assert.h"
 #include "jungle/constants.h"
 #include "jungle/preusing.h"
 
@@ -238,19 +239,31 @@ public:
 
         T &operator*()
             requires(ReadMutable)
-        pre(*this) {
+        {
+            JUNGLE_ASSERT(*this);
+
             return m_rwspinlock->m_value;
         }
 
-        const T &operator*() const pre(*this) { return m_rwspinlock->m_value; }
+        const T &operator*() const {
+            JUNGLE_ASSERT(*this);
+
+            return m_rwspinlock->m_value;
+        }
 
         T *operator->()
             requires(ReadMutable)
-        pre(*this) {
+        {
+            JUNGLE_ASSERT(*this);
+
             return &m_rwspinlock->m_value;
         }
 
-        const T *operator->() const pre(*this) { return &m_rwspinlock->m_value; }
+        const T *operator->() const {
+            JUNGLE_ASSERT(*this);
+
+            return &m_rwspinlock->m_value;
+        }
 
     private:
         read_guard(rwspinlock *p, rwspinlock<>::read_guard &&inner_guard) noexcept
@@ -287,11 +300,27 @@ public:
 
         operator bool() const noexcept { return m_rwspinlock != nullptr; }
 
-        T &operator*() pre(*this) { return m_rwspinlock->m_value; }
-        const T &operator*() const pre(*this) { return m_rwspinlock->m_value; }
+        T &operator*() {
+            JUNGLE_ASSERT(*this);
 
-        T *operator->() pre(*this) { return &m_rwspinlock->m_value; }
-        const T *operator->() const pre(*this) { return &m_rwspinlock->m_value; }
+            return m_rwspinlock->m_value;
+        }
+        const T &operator*() const {
+            JUNGLE_ASSERT(*this);
+
+            return m_rwspinlock->m_value;
+        }
+
+        T *operator->() {
+            JUNGLE_ASSERT(*this);
+
+            return &m_rwspinlock->m_value;
+        }
+        const T *operator->() const {
+            JUNGLE_ASSERT(*this);
+
+            return &m_rwspinlock->m_value;
+        }
 
     private:
         write_guard(rwspinlock *p, rwspinlock<>::write_guard &&inner_guard) noexcept
