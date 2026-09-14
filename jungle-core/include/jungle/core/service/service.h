@@ -23,7 +23,7 @@ concept ServiceImpl = requires {
     !std::is_same_v<S, Service>;
 };
 
-using ServiceCreator = std::unique_ptr<Service> (*)();
+using ServiceCreator = std::tuple<type_id, std::unique_ptr<Service>> (*)();
 
 class Service : public util::type_mutate<Service> {
 public:
@@ -34,7 +34,9 @@ public:
 
     template<ServiceImpl S>
     static ServiceCreator register_creator() {
-        auto ctor = +[] -> std::unique_ptr<Service> { return std::make_unique<S>(); };
+        auto ctor = +[] -> std::tuple<type_id, std::unique_ptr<Service>> {
+            return {type_id::of<S>(), std::make_unique<S>()};
+        };
         auto res = m_services_of_components.insert(string_id{std::meta::identifier_of(^^S)}, ctor);
         JUNGLE_ASSERT(res);
         return ctor;
@@ -47,11 +49,6 @@ protected:
     void start();
 
     virtual async::future<> run() = 0;
-
-    static void register_service_creator(string_id name, ServiceCreator creator) {
-        auto res = m_services_of_components.insert(name, creator);
-        JUNGLE_ASSERT(res);
-    }
 
 private:
     inline static hash_map<string_id, ServiceCreator> m_services_of_components{};
