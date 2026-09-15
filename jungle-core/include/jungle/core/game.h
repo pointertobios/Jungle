@@ -16,12 +16,6 @@ class Game : public service::Service {
 public:
     Game();
 
-    Game(const Game &) = delete;
-    Game &operator=(const Game &) = delete;
-
-    Game(Game &&) = delete;
-    Game &operator=(Game &&) = delete;
-
     ustr name() const override { return "Game"; }
 
 private:

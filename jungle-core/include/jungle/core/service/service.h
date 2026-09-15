@@ -43,6 +43,12 @@ public:
         return ctor;
     }
 
+    Service(const Service &) = delete;
+    Service &operator=(const Service &) = delete;
+
+    Service(Service &&) = delete;
+    Service &operator=(Service &&) = delete;
+
     virtual ustr name() const = 0;
 
     void start();
