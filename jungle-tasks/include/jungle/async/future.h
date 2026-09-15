@@ -17,20 +17,19 @@
 #include "jungle/types/erased.h"
 #include "jungle/types/raw_storage.h"
 
-
 namespace jungle::async {
 
-#ifdef JUNGLE_DEBUG_ENABLED
 namespace detail {
 
+#ifdef JUNGLE_DEBUG_ENABLED
 void future_trace_start(std::source_location sl);
 void future_trace_end();
+#endif
 
 void future_create_placement_executing_guard(raw_storage<tasks::runtime::placement_executing_guard> &guard);
 void future_destroy_placement_executing_guard(raw_storage<tasks::runtime::placement_executing_guard> &guard);
 
 };  // namespace detail
-#endif
 
 template<typename T = void>
 class [[nodiscard("A future<T> must always be co_await'ed once")]] future final {
@@ -165,7 +164,7 @@ public:
 
     auto await_suspend(std::coroutine_handle<> waiter) {
         JUNGLE_ASSERT(!is_empty());
-        
+
 #ifdef JUNGLE_DEBUG_ENABLED
         detail::future_trace_start(m_promise->m_source_location);
 #endif

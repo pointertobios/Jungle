@@ -64,7 +64,10 @@ runtime::~runtime() {
     for (auto &w : *m_blocking_workers.read()) {
         w.m_worker->join();
     }
+
+#ifdef JUNGLE_DEBUG_ENABLED
     m_debug_host->join();
+#endif
 }
 
 void runtime::main_loop() {
