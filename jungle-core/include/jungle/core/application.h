@@ -15,7 +15,9 @@ public:
     Application &operator=(const Application&) = delete;
 
     Application(Application &&) = delete;
-    Application &operator=(Application&&) = delete;
+    Application &operator=(Application &&) = delete;
+
+    async::future<> run();
 
 private:
     hash_map<type_id, std::unique_ptr<service::Service>> m_service_table{};

@@ -14,13 +14,15 @@ Jungle 是一个实验性游戏引擎，旨在探索现代 C++ 标准（C++26）
 - [x] 编译期反射元编程工具
 - [x] 序列化/反序列化框架
 - [x] ECS 核心
-- [ ] ECS 查询系统
-- [ ] 异步框架
+- [x] 异步框架（不再开发新特性，随 ASCO 同步）
+- [ ] Service 层
+  - [ ] Log service
+  - [ ] Display service
+  - [ ] Game service
 - [ ] 资源管理
-- [ ] 插件系统
-  - [ ] 渲染插件
-  - [ ] 输入插件
-  - [ ] 网络插件
+- [ ] doxygen 文档生成器
+- [ ] ECS 查询系统
+- [ ] mimalloc 接入
 
 ## License
 

@@ -6,6 +6,7 @@
 #include <concepts>
 #include <functional>
 #include <memory>
+#include <tuple>
 #include <vector>
 
 #include "jungle/assert.h"
@@ -23,7 +24,7 @@ class Manager;
 template<typename M>
 concept ComponentManager = std::derived_from<M, Manager<>> && !std::is_same_v<M, Manager<>>;
 
-using ManagerCreator = std::unique_ptr<Manager<>> (*)();
+using ManagerCreator = std::tuple<type_id, std::unique_ptr<Manager<>>> (*)();
 
 template<>
 class Manager<> : public util::type_mutate<Manager<>> {
@@ -32,10 +33,12 @@ public:
     static constexpr bool static_mutatable = ComponentManager<C>;
 
     static ManagerCreator get_manager_creator(string_id name) {
-        auto res = m_creators_of_component.get(name);
+        auto res = s_creators_of_component.get(name);
         JUNGLE_ASSERT(res);
         return *res;
     }
+
+    std::string_view name() const { return m_component_name; }
 
     virtual std::vector<std::reference_wrapper<Component<>>> vget_components() = 0;
     virtual std::vector<std::reference_wrapper<const Component<>>> vget_components() const = 0;
@@ -44,29 +47,34 @@ public:
     virtual std::vector<std::reference_wrapper<const Component<>>> vget_components(Entity entity) const = 0;
 
 protected:
-    constexpr Manager(type_id type)
-            : util::type_mutate<Manager<>>{type} {}
+    constexpr Manager(type_id type, std::string_view component_name)
+            : util::type_mutate<Manager<>>{type}
+            , m_component_name{component_name} {}
 
     static void reigster_manager_creator(string_id name, ManagerCreator creator) {
-        auto res = m_creators_of_component.insert(name, creator);
+        auto res = s_creators_of_component.insert(name, creator);
         JUNGLE_ASSERT(res);
     }
 
 private:
-    inline static hash_map<string_id, ManagerCreator> m_creators_of_component{};
+    const std::string_view m_component_name;
+
+    inline static hash_map<string_id, ManagerCreator> s_creators_of_component{};
 };
 
 template<ComponentImpl C>
 class Manager<C> final : public Manager<> {
 public:
     static ManagerCreator register_creator() {
-        auto crtor = +[] -> std::unique_ptr<Manager<>> { return std::make_unique<Manager>(); };
+        auto crtor = +[] -> std::tuple<type_id, std::unique_ptr<Manager<>>> {
+            return {type_id::of<Manager<C>>(), std::make_unique<Manager>()};
+        };
         Manager<>::reigster_manager_creator(string_id{std::meta::identifier_of(^^C)}, crtor);
         return crtor;
     }
 
     constexpr Manager()
-            : Manager<>{type_id::of<Manager<C>>()} {}
+            : Manager<>{type_id::of<Manager<C>>(), std::meta::identifier_of(^^C)} {}
 
     template<typename... Args>
     C &create(ComponentID id, Args &&...args) {

@@ -19,7 +19,7 @@
 
 namespace jungle::async {
 
-template<typename T>
+template<typename T = void>
 class join_handle final {
 public:
     using output_type = T;

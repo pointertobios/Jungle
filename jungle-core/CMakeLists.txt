@@ -17,6 +17,7 @@ set(JUNGLE_HEADERS
     ${IPREF}/ecs/manager.h
     ${IPREF}/game.h
     ${IPREF}/level.h
+    ${IPREF}/log/logging.h
     ${IPREF}/service/service.h
 )
 
@@ -28,6 +29,8 @@ set(JUNGLE_SOURCES
     src/ecs/component.cpp
     src/ecs/entity.cpp
     src/game.cpp
+    src/level.cpp
+    src/log/logging.cpp
     src/service/service.cpp
 )
 

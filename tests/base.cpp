@@ -82,8 +82,6 @@ int main() {
     std::println("{}", debug(s));
     jungle::meta::has_template_annotation<^^jungle::core::ecs::Entity, ^^annotation_test>();
 
-    core::Level level;
-
     using jungle::tasks::runtime::runtime_config;
     {
         auto rt = runtime_config{}.multi_threaded().build();

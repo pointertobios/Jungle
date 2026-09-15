@@ -4,6 +4,7 @@
 #pragma once
 
 #include <memory>
+#include <span>
 #include <vector>
 
 #include "jungle/assert.h"
@@ -12,12 +13,13 @@
 #include "jungle/core/component/transform.h"
 #include "jungle/core/ecs/component.h"
 #include "jungle/core/ecs/manager.h"
+#include "jungle/types/string_id.h"
 
 namespace jungle::core {
 
 class Level {
 public:
-    Level() = default;
+    Level(std::span<string_id> using_components);
 
     auto get_managers() const { return m_managers.view(); }
 

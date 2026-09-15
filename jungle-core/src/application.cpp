@@ -13,7 +13,17 @@ Application::Application(std::span<string_id> using_services) {
     for (auto sid : using_services) {
         auto ctor = service::Service::get_service_creator(sid);
         auto [tid, uptr] = ctor();
-        m_service_table.insert(tid, try_move(uptr));
+        auto res = m_service_table.insert(tid, try_move(uptr));
+        JUNGLE_ASSERT(res, "重复的服务 '{}'", uptr->name());
+    }
+}
+
+async::future<> Application::run() {
+    for (auto &service : m_service_table) {
+        service.value()->start();
+    }
+    for (auto &service : m_service_table) {
+        co_await service.value()->join();
     }
 }
 

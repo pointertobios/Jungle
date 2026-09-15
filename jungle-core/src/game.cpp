@@ -8,6 +8,9 @@ namespace jungle::core {
 Game::Game()
         : Service{type_id::of<Game>()} {}
 
-async::future<> Game::run() { co_return; }
+async::future<> Game::run() {
+    std::println("Hello Jungle");
+    co_return;
+}
 
 };  // namespace jungle::core

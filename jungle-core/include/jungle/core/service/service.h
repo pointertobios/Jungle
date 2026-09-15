@@ -9,6 +9,7 @@
 
 #include "jungle/assert.h"
 #include "jungle/async/future.h"
+#include "jungle/async/join_handle.h"
 #include "jungle/container/hash_map.h"
 #include "jungle/types/string_id.h"
 #include "jungle/util/type_mutate.h"
@@ -37,21 +38,27 @@ public:
         auto ctor = +[] -> std::tuple<type_id, std::unique_ptr<Service>> {
             return {type_id::of<S>(), std::make_unique<S>()};
         };
-        auto res = m_services_of_components.insert(string_id{std::meta::identifier_of(^^S)}, ctor);
+        auto res = s_services_of_components.insert(string_id{std::meta::identifier_of(^^S)}, ctor);
         JUNGLE_ASSERT(res);
         return ctor;
     }
+
+    virtual ustr name() const = 0;
+
+    void start();
+
+    async::future<> join();
 
 protected:
     constexpr Service(type_id type)
             : type_mutate<Service>{type} {}
 
-    void start();
-
     virtual async::future<> run() = 0;
 
 private:
-    inline static hash_map<string_id, ServiceCreator> m_services_of_components{};
+    async::join_handle<> m_run_task{};
+
+    inline static hash_map<string_id, ServiceCreator> s_services_of_components{};
 };
 
 #define jungle_core_service_register(service_impl)                              \

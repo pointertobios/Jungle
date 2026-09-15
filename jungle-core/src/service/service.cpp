@@ -9,13 +9,18 @@
 namespace jungle::core::service {
 
 ServiceCreator Service::get_service_creator(string_id name) {
-    auto res = m_services_of_components.get(name);
+    auto res = s_services_of_components.get(name);
     JUNGLE_ASSERT(res);
     return *res;
 }
 
+async::future<> Service::join() {
+    co_await m_run_task;
+}
+
 void Service::start() {
-    this_task::spawn([&] -> async::future<> { co_await run(); });
+    JUNGLE_ASSERT(m_run_task.is_empty());
+    m_run_task = this_task::spawn([&] -> async::future<> { co_await run(); });
 }
 
 };  // namespace jungle::core::service
