@@ -17,7 +17,7 @@ public:
 
     counting_semaphore(usize x)
             : m_counter{x} {
-        ASCO_ASSERT(x < N);
+        JUNGLE_ASSERT(x < N);
     }
 
     counting_semaphore(const counting_semaphore &) = delete;
@@ -34,7 +34,7 @@ public:
         return m_counter.compare_exchange_strong(c, c - 1, morder::acq_rel, morder::relaxed);
     }
 
-    future<> acquire() {
+    async::future<> acquire() {
         while (true) {
             auto c = m_counter.load(morder::acquire);
             if (c == 0) {

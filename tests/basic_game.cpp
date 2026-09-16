@@ -7,7 +7,7 @@
 using namespace jungle;
 
 int main() {
-    string_id services[] = {string_id{"Game"}, string_id{"Logging"}};
+    string_id services[] = {string_id{"Game"}, string_id{"Logging"}, string_id{"Asset"}};
     core::Application app{services};
     tasks::runtime::runtime().block_on([&] -> async::future<> { co_await app.run(); });
 }
