@@ -1,51 +1,30 @@
 # Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
 # SPDX-License-Identifier: MIT
 
-set(IPREF "include/jungle/core") # Include prefix for headers
+include(${PROJECT_SOURCE_DIR}/cmake/GeneratePch.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/CollectFiles.cmake)
 
-set(JUNGLE_HEADERS
-    ${IPREF}/application.h
-    ${IPREF}/asset/asset_id.h
-    ${IPREF}/asset/asset_provider.h
-    ${IPREF}/asset/embedded_tree.h
-    ${IPREF}/asset/serde/serde_jaml.h
-    ${IPREF}/component/transform.h
-    ${IPREF}/component/motion.h
-    ${IPREF}/ecs/component_storage.h
-    ${IPREF}/ecs/component.h
-    ${IPREF}/ecs/entity.h
-    ${IPREF}/ecs/manager.h
-    ${IPREF}/game.h
-    ${IPREF}/level.h
-    ${IPREF}/log/logging.h
-    ${IPREF}/service/service.h
+jungle_generate_pch(PRECOMPILE_HEADERS
+    INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/pch.h
 )
 
-set(JUNGLE_SOURCES
-    src/application.cpp
-    src/asset/asset_id.cpp
-    src/asset/providers/embedded_jaml.cpp
-    src/asset/serde/serde_jaml.cpp
-    src/ecs/component.cpp
-    src/ecs/entity.cpp
-    src/game.cpp
-    src/level.cpp
-    src/log/logging.cpp
-    src/service/service.cpp
+jungle_collect_files(JUNGLE_SOURCES
+    INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src
+    PATTERNS "*.cpp"
 )
 
 add_library(jungle-core ${JUNGLE_SOURCES})
 target_link_libraries(jungle-core jungle::base jungle::tasks)
 target_include_directories(jungle-core PUBLIC include)
-target_precompile_headers(jungle-core PUBLIC ${JUNGLE_HEADERS})
+target_precompile_headers(jungle-core PUBLIC ${PRECOMPILE_HEADERS})
 add_library(jungle::core ALIAS jungle-core)
 
 # Unit Tests
 
-set(JUNGLE_UNIT_TEST_SOURCES
-    unit_tests/component.cpp
-    unit_tests/manager.cpp
-    unit_tests/serde_jaml.cpp
+jungle_collect_files(JUNGLE_UNIT_TEST_SOURCES
+    INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/unit_tests
+    PATTERNS "*.cpp"
 )
 
 add_executable(jungle-core-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})
