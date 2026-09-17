@@ -1,0 +1,9 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+jungle-base = { version = "0.1.0", path = "../jungle-base" }
+jungle-core = { version = "0.1.0", path = "../jungle-core" }
+tokio = { version = "1.53.1", features = ["full", "test-util", "tracing"] }

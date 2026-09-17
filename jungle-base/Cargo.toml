@@ -1,0 +1,7 @@
+[package]
+name = "jungle-base"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+const-fnv1a-hash = "1.1.0"

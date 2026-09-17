@@ -1,0 +1,10 @@
+[package]
+name = "jungle-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = "0.1.92"
+inventory = "0.3.24"
+jungle-base = { version = "0.1.0", path = "../jungle-base" }
+tokio = { version = "1.53.1", features = ["full", "test-util", "tracing"] }

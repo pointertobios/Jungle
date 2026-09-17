@@ -1,0 +1,3 @@
+[workspace]
+resolver = "3"
+members = ["example","jungle-base","jungle-core", "jungle-macros"]
