@@ -5,13 +5,13 @@ use tokio::task::JoinSet;
 
 use crate::{
     service::{self, Service},
-    stop_token::StopToken,
+    service_controller::ServiceController,
 };
 
 pub struct Application {
     services: HashMap<TypeId, Box<dyn Service>>,
 
-    stop_token: Arc<StopToken>,
+    stop_token: Arc<ServiceController>,
 }
 
 impl Application {
@@ -26,7 +26,7 @@ impl Application {
         }
         Self {
             services,
-            stop_token: Arc::new(StopToken::new()),
+            stop_token: Arc::new(ServiceController::new()),
         }
     }
 

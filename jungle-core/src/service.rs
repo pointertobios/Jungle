@@ -3,7 +3,7 @@ use std::{any::TypeId, collections::HashMap, sync::LazyLock};
 use async_trait::async_trait;
 use jungle_base::StringID;
 
-use crate::stop_token::StopToken;
+use crate::service_controller::ServiceController;
 
 pub type ServiceCreator = fn() -> (TypeId, Box<dyn Service>);
 
@@ -46,5 +46,5 @@ macro_rules! register_service {
 pub trait Service: Send + Sync {
     fn name(&self) -> &'static str;
 
-    async fn run(&mut self, st: &StopToken);
+    async fn run(&mut self, st: &ServiceController);
 }

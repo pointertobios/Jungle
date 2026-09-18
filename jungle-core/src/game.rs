@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{register_service, service::Service, stop_token::StopToken};
+use crate::{register_service, service::Service, service_controller::ServiceController};
 
 pub struct Game {}
 
@@ -12,10 +12,10 @@ impl Service for Game {
         "Game"
     }
 
-    async fn run(&mut self, st: &StopToken) {
+    async fn run(&mut self, service_ctl: &ServiceController) {
         println!("Hello Jungle!");
 
-        st.stop();
+        service_ctl.stop();
     }
 }
 
