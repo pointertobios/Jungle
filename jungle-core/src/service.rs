@@ -17,7 +17,9 @@ inventory::collect!(ServiceRegistration);
 static SERVICES_BY_NAME: LazyLock<HashMap<StringID, ServiceCreator>> = LazyLock::new(|| {
     let mut map = HashMap::new();
     for reg in inventory::iter::<ServiceRegistration> {
-        map.insert(reg.name, reg.creator);
+        if map.insert(reg.name, reg.creator).is_some() {
+            panic!("服务名称 'reg.name' 重复注册");
+        }
     }
     map
 });

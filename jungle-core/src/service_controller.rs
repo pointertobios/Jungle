@@ -29,4 +29,8 @@ impl ServiceController {
             self.notify.notified().await;
         }
     }
+
+    pub async fn wait_for_awake(&self) {
+        self.notify.notified().await;
+    }
 }
