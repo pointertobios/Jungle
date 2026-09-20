@@ -20,12 +20,8 @@ impl Display for Entity {
 
 impl Entity {
     pub fn from_u64(id: u64) -> Self {
-        if id == 0 {
-            Self { id: None }
-        } else {
-            Self {
-                id: NonZeroU64::new(id),
-            }
+        Self {
+            id: NonZeroU64::new(id),
         }
     }
 }
