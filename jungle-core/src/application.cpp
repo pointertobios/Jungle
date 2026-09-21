@@ -3,11 +3,18 @@
 
 #include "jungle/core/application.h"
 
+#include "jungle/assert.h"
 #include "jungle/core/service/service.h"
 
 namespace jungle::core {
 
+Application &Application::current() {
+    JUNGLE_ASSERT(s_application);
+    return *s_application;
+}
+
 Application::Application(std::span<string_id> using_services) {
+    JUNGLE_ASSERT(!s_application, "仅能构造一个 Application 实例");
     s_application = this;
 
     for (auto sid : using_services) {
