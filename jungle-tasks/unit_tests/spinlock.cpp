@@ -4,7 +4,7 @@
 #include "jungle/sync/spinlock.h"
 #include "jungle/tasks/runtime/runtime.h"
 #include "jungle/tasks/this_task.h"
-#include "jungle/test/async_test.h"
+#include "jungle/test/test.h"
 #include <print>
 
 using namespace jungle;

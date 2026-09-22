@@ -207,7 +207,7 @@ void ustr::check_valid(std::span<const i8> utf8) {
     for (usize i = 0; i < utf8.size();) {
         const auto length = uchar::utf8_length(std::span<const i8>(utf8.data() + i, utf8.size() - i));
         if (length == 0) {
-            panic("绱㈠紩 {} 澶勫瓨鍦ㄩ潪娉曠殑 UTF-8 搴忓垪", i);
+            panic("字节 {} 处不是有效的 UTF-8 字符", i);
         }
         i += length;
     }

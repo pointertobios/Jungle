@@ -89,6 +89,8 @@ public:
 
     std::string_view view() const { return m_storage; }
 
+    bool operator==(const ustr &other) const { return m_storage == other.m_storage; }
+
     std::vector<uchar> to_uchars() const;
 
     void push(uchar ch);

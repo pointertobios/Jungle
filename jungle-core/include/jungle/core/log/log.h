@@ -7,7 +7,7 @@
 
 namespace jungle::core::log {
 
-using time_point = std::chrono::steady_clock::system_clock::time_point;
+using time_point = std::chrono::system_clock::time_point;
 
 namespace fmt {
 
@@ -17,19 +17,20 @@ public:
     template<typename T>
         requires(std::convertible_to<const T &, std::string_view>)
     format_string_type(
-        const T &fmt, time_point tp = std::chrono::steady_clock::now(),
+        const T &fmt, log::time_point tp = std::chrono::system_clock::now(),
         std::source_location sl = std::source_location::current())
             : m_fmt{fmt}
             , m_tp{time_point}
             , m_sl{sl} {}
 
     auto get() const { return m_fmt.get(); }
+
     auto time_point() const { return m_tp; }
     auto source_location() const { return m_sl; }
 
 private:
     std::format_string<Args...> m_fmt;
-    time_point m_tp;
+    log::time_point m_tp;
     std::source_location m_sl;
 };
 
@@ -51,7 +52,7 @@ struct LogMessege {
     LogLevel level;
     time_point tp;
     ustr msg;
-}
+};
 
 template<typename... Args>
 void log_event(LogLevel level, fmt::format_string<Args...> fmt, const Args &...args) {}

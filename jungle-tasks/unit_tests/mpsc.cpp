@@ -3,13 +3,12 @@
 
 #include <atomic>
 #include <memory>
-#include <string>
 #include <utility>
 
+#include "jungle/container/mpsc.h"
 #include "jungle/sync/condition_variable.h"
 #include "jungle/sync/mpsc.h"
 #include "jungle/tasks/this_task.h"
-#include "jungle/test/async_test.h"
 #include "jungle/test/test.h"
 
 using namespace jungle;
@@ -283,8 +282,7 @@ JUNGLE_ASYNC_TEST(multiple_async_senders_all_messages_arrive) {
     co_await jh4;
     co_await jhc;
 
-    JUNGLE_ASYNC_ASSERT(received.load() == total,
-                        "所有发送者并发发送的消息都应被接收");
+    JUNGLE_ASYNC_ASSERT(received.load() == total, "所有发送者并发发送的消息都应被接收");
     JUNGLE_ASYNC_SUCCESS();
 }
 
@@ -311,18 +309,15 @@ JUNGLE_ASYNC_TEST(multiple_senders_block_on_full_then_unblock_one_by_one) {
     auto v0 = co_await receiver.recv();
     JUNGLE_ASYNC_ASSERT(v0 == 0, "第一条消息应为 0");
     co_await cv([&] { return completed.load(morder::acquire) == 1; });
-    JUNGLE_ASYNC_ASSERT(completed.load(morder::acquire) == 1,
-                        "消费一条消息后恰好唤醒一个发送者");
+    JUNGLE_ASYNC_ASSERT(completed.load(morder::acquire) == 1, "消费一条消息后恰好唤醒一个发送者");
 
     co_await receiver.recv();
     co_await cv([&] { return completed.load(morder::acquire) == 2; });
-    JUNGLE_ASYNC_ASSERT(completed.load(morder::acquire) == 2,
-                        "消费两条消息后恰好唤醒两个发送者");
+    JUNGLE_ASYNC_ASSERT(completed.load(morder::acquire) == 2, "消费两条消息后恰好唤醒两个发送者");
 
     co_await receiver.recv();
     co_await cv([&] { return completed.load(morder::acquire) == 3; });
-    JUNGLE_ASYNC_ASSERT(completed.load(morder::acquire) == 3,
-                        "消费三条消息后恰好唤醒三个发送者");
+    JUNGLE_ASYNC_ASSERT(completed.load(morder::acquire) == 3, "消费三条消息后恰好唤醒三个发送者");
 
     co_await jh1;
     co_await jh2;
@@ -355,8 +350,7 @@ JUNGLE_ASYNC_TEST(stop_unblocks_multiple_blocked_senders) {
     co_await jh2;
     co_await jh3;
 
-    JUNGLE_ASYNC_ASSERT(unblocked.load(morder::acquire) == 3,
-                        "stop 应唤醒所有阻塞的发送者并使其返回 false");
+    JUNGLE_ASYNC_ASSERT(unblocked.load(morder::acquire) == 3, "stop 应唤醒所有阻塞的发送者并使其返回 false");
     JUNGLE_ASYNC_SUCCESS();
 }
 
@@ -395,7 +389,6 @@ JUNGLE_ASYNC_TEST(concurrent_try_send_from_multiple_senders_all_arrive) {
     co_await jh4;
     co_await jhc;
 
-    JUNGLE_ASYNC_ASSERT(received.load() == total,
-                        "多个发送者并发 try_send 的所有消息都应到达");
+    JUNGLE_ASYNC_ASSERT(received.load() == total, "多个发送者并发 try_send 的所有消息都应到达");
     JUNGLE_ASYNC_SUCCESS();
 }

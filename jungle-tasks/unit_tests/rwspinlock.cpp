@@ -7,7 +7,6 @@
 #include "jungle/sync/rwspinlock.h"
 #include "jungle/tasks/this_task.h"
 #include "jungle/tasks/this_task.h"
-#include "jungle/test/async_test.h"
 #include "jungle/test/test.h"
 
 using namespace jungle;

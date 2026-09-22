@@ -55,7 +55,9 @@ private:
                 bool await_ready() { return false; }
 
                 void await_suspend(std::coroutine_handle<>) {
-                    tasks::runtime::worker::current().get_scheduler().detach_task(tid);
+                    if (tasks::runtime::worker::exists()) {
+                        tasks::runtime::worker::current().get_scheduler().detach_task(tid);
+                    }
                     this_coroutine.destroy();
                 }
 

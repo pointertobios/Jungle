@@ -6,14 +6,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/CollectFiles.cmake)
 
 jungle_generate_pch(PRECOMPILE_HEADERS
     INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include
-    EXCLUDE
-        jungle/test
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/pch.h
-)
-
-jungle_generate_pch(PRECOMPILE_HEADERS_TEST
-    INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/pch_test.h
 )
 
 jungle_collect_files(JUNGLE_SOURCES_COMMON
@@ -76,19 +69,3 @@ target_include_directories(jungle-base PUBLIC include)
 target_compile_options(jungle-base PUBLIC ${JUNGLE_OPTIONS})
 target_compile_definitions(jungle-base PUBLIC ${JUNGLE_DEFINES})
 add_library(jungle::base ALIAS jungle-base)
-
-add_library(jungle-test src/test/test_main.cpp)
-target_precompile_headers(jungle-test PUBLIC ${PRECOMPILE_HEADERS_TEST})
-target_link_libraries(jungle-test PUBLIC jungle::base)
-add_library(jungle::test ALIAS jungle-test)
-
-# Unit Tests
-
-jungle_collect_files(JUNGLE_UNIT_TEST_SOURCES
-    INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/unit_tests
-    PATTERNS "*.cpp"
-)
-
-add_executable(jungle-base-unit-tests ${JUNGLE_UNIT_TEST_SOURCES})
-target_link_libraries(jungle-base-unit-tests PUBLIC jungle::test)
-add_test(NAME jungle-base-unit-tests COMMAND jungle-base-unit-tests)

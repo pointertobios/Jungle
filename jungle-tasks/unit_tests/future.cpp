@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 #include "jungle/async/future.h"
-#include "jungle/test/async_test.h"
 #include "jungle/test/test.h"
 
 using namespace jungle;

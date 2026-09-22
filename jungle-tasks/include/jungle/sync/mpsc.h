@@ -35,7 +35,11 @@ public:
         auto try_send(try_move_t<T> value) {
             JUNGLE_ASSERT(is_valid());
 
-            return m_sync_sender.send(std::forward<decltype(value)>(value));
+            bool res = m_sync_sender.send(std::forward<decltype(value)>(value));
+            if (res) {
+                m_payload->m_recv_cv.notify_one();
+            }
+            return res;
         }
 
         async::future<bool> send(try_move_t<T> value) {
@@ -83,7 +87,11 @@ public:
         auto try_recv() {
             JUNGLE_ASSERT(is_valid());
 
-            return m_sync_receiver.recv();
+            auto res = m_sync_receiver.recv();
+            if (res.has_value()) {
+                m_payload->m_send_cv.notify_one();
+            }
+            return res;
         }
 
         async::future<T> recv() {

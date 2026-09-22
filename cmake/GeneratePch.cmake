@@ -27,9 +27,9 @@ function(jungle_generate_pch out_var)
 
     set(_lines)
     foreach(_header IN LISTS _headers)
-        file(RELATIVE_PATH _relative "${_include_dir_abs}" "${_header}")
-        file(TO_CMAKE_PATH "${_relative}" _relative)
-        list(APPEND _lines "#include <${_relative}>")
+        get_filename_component(_header_abs "${_header}" ABSOLUTE)
+        file(TO_CMAKE_PATH "${_header_abs}" _header_abs)
+        list(APPEND _lines "#include \"${_header_abs}\"")
     endforeach()
 
     list(SORT _lines)

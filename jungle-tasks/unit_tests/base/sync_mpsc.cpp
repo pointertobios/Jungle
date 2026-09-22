@@ -1,6 +1,19 @@
+// Copyright (C) 2026 pointer-to-bios <pointer-to-bios@outlook.com>
+// SPDX-License-Identifier: MIT
 
+#include "jungle/container/mpsc.h"
+#include "jungle/test/test.h"
 
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
+using namespace jungle;
+using jungle::container::mpsc;
+using jungle::container::receive_failed;
+
+JUNGLE_SYNC_TEST(mpsc_queue_creates_sender_receiver_pair) {
     auto [sender, receiver] = mpsc<int>::queue();
 
     JUNGLE_SYNC_ASSERT(sender.send(42), "send to default capacity queue should succeed");
@@ -10,7 +23,7 @@
     JUNGLE_SYNC_SUCCESS();
 }
 
-
+JUNGLE_SYNC_TEST(mpsc_single_send_recv) {
     auto [sender, receiver] = mpsc<int>::queue();
 
     JUNGLE_SYNC_ASSERT(sender.send(7), "send should succeed on empty queue");
@@ -20,7 +33,7 @@
     JUNGLE_SYNC_SUCCESS();
 }
 
-
+JUNGLE_SYNC_TEST(mpsc_empty_queue_recv_returns_empty_error) {
     auto [sender, receiver] = mpsc<int>::queue();
 
     auto val = receiver.recv();
