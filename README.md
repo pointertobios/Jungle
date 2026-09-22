@@ -22,7 +22,6 @@ Jungle 是一个实验性游戏引擎，旨在探索现代 C++ 标准（C++26）
 - [ ] 资源管理
 - [ ] doxygen 文档生成器
 - [ ] ECS 查询系统
-- [ ] mimalloc 接入
 
 ## License
 

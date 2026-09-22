@@ -62,10 +62,20 @@ set(JUNGLE_DEFINES
     JUNGLE_BUILD_ID="${JUNGLE_BUILD_ID}"
 )
 
+# 公共编译配置（空静态库）：仅传递 JUNGLE_OPTIONS / JUNGLE_DEFINES
+
+set(JUNGLE_CONFIG_EMPTY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/jungle-config-empty.cpp)
+if(NOT EXISTS "${JUNGLE_CONFIG_EMPTY_SOURCE}")
+    file(WRITE "${JUNGLE_CONFIG_EMPTY_SOURCE}" "")
+endif()
+
+add_library(jungle-config STATIC ${JUNGLE_CONFIG_EMPTY_SOURCE})
+target_compile_options(jungle-config PUBLIC ${JUNGLE_OPTIONS})
+target_compile_definitions(jungle-config PUBLIC ${JUNGLE_DEFINES})
+add_library(jungle::config ALIAS jungle-config)
+
 add_library(jungle-base ${JUNGLE_SOURCES})
 target_precompile_headers(jungle-base PUBLIC ${PRECOMPILE_HEADERS})
-target_link_libraries(jungle-base PUBLIC ${JUNGLE_DEPLIBS})
+target_link_libraries(jungle-base PUBLIC ${JUNGLE_DEPLIBS} jungle::config)
 target_include_directories(jungle-base PUBLIC include)
-target_compile_options(jungle-base PUBLIC ${JUNGLE_OPTIONS})
-target_compile_definitions(jungle-base PUBLIC ${JUNGLE_DEFINES})
 add_library(jungle::base ALIAS jungle-base)

@@ -27,6 +27,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 add_subdirectory(jungle-base)
 add_subdirectory(jungle-tasks)
+add_subdirectory(jungle-allocator)
 add_subdirectory(jungle-core)
 add_subdirectory(jungle-ui)
 
