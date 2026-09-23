@@ -35,6 +35,6 @@ jungle_collect_files(JUNGLE_EXT_SOURCES
 )
 
 add_library(jungle-allocator-ext STATIC ${JUNGLE_EXT_SOURCES})
-target_link_libraries(jungle-allocator-ext PUBLIC jungle::allocator)
+target_link_libraries(jungle-allocator-ext PRIVATE jungle::allocator)
 target_precompile_headers(jungle-allocator-ext PUBLIC ${PRECOMPILE_HEADERS_EXT})
 add_library(jungle::allocator-ext ALIAS jungle-allocator-ext)
