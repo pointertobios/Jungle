@@ -129,7 +129,7 @@ ustr jaml_header_with(std::string_view build_id_str, std::string_view hex) {
 // 使用当前构建信息构造的头部。
 ustr current_jaml_header() {
     const auto hex = current_build_id_hex();
-    return jaml_header_with(jungle::build_id_string().view(), hex.view());
+    return jaml_header_with(jungle::build_id_string(), hex.view());
 }
 
 // ---- 反序列化测试包装 ----

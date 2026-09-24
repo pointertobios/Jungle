@@ -7,7 +7,7 @@
 #include <stop_token>
 #include <thread>
 
-#include "jungle/types/uchar.h"
+#include "jungle/types/ustr.h"
 
 namespace jungle::runtime {
 

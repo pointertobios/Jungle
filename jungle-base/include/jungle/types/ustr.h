@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <array>
 #include <format>
 #include <ranges>
 #include <span>
@@ -14,10 +13,9 @@
 
 #include "jungle/types/concepts.h"
 #include "jungle/types/int.h"
+#include "jungle/types/uchar.h"
 
 namespace jungle {
-
-class ustr;
 
 namespace fmt {
 
@@ -35,37 +33,6 @@ static constexpr decltype(auto) normalize_format_arg(Arg &&arg) {
 }
 
 };  // namespace fmt
-
-struct uchar {
-    static constexpr u32 MAX = 0x10FFFF;
-    static constexpr u32 INVALID = 0;
-
-    constexpr uchar() = default;
-
-    constexpr uchar(i8 ascii)
-            : m_value(static_cast<u32>(static_cast<u8>(ascii))) {}
-
-    constexpr uchar(int ascii)
-            : m_value(static_cast<u32>(ascii)) {}
-
-    constexpr operator bool() const { return m_value != INVALID; }
-
-    constexpr bool operator==(const uchar &other) const {
-        return m_value != INVALID && other.m_value != INVALID && m_value == other.m_value;
-    }
-
-    static constexpr usize utf8_length(std::span<const i8> utf8);
-
-    static constexpr uchar from_utf8(std::span<const i8> utf8);
-
-    constexpr std::array<i8, 4> to_utf8() const;
-
-private:
-    constexpr uchar(u32 value)
-            : m_value{value} {}
-
-    u32 m_value{0};
-};
 
 class ustr {
 public:
@@ -130,25 +97,6 @@ inline ustr operator"" _u(const char *str, std::size_t len) { return ustr{std::s
 };  // namespace literals
 
 };  // namespace jungle
-
-template<>
-struct std::formatter<jungle::uchar> : std::formatter<std::string_view> {
-    auto format(const jungle::uchar &ch, auto &ctx) const {
-        const auto utf8 = ch.to_utf8();
-
-        jungle::usize length = 0;
-        while (length < utf8.size() && utf8[length] != 0) {
-            ++length;
-        }
-
-        std::array<char, 4> buffer{};
-        for (jungle::usize i = 0; i < length; ++i) {
-            buffer[i] = utf8[i];
-        }
-
-        return std::formatter<std::string_view>::format(std::string_view(buffer.data(), length), ctx);
-    }
-};
 
 template<>
 struct std::formatter<jungle::ustr> : std::formatter<std::string_view> {

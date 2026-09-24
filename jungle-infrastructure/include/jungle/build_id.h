@@ -3,12 +3,13 @@
 
 #pragma once
 
+#include <string_view>
+
 #include "jungle/types/int.h"
-#include "jungle/types/uchar.h"
 
 namespace jungle {
 
 u128 build_id();
-const ustr &build_id_string();
+std::string_view build_id_string();
 
 };  // namespace jungle

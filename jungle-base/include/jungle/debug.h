@@ -9,7 +9,7 @@
 #include <type_traits>
 
 #include "jungle/meta.h"
-#include "jungle/types/uchar.h"
+#include "jungle/types/ustr.h"
 
 namespace jungle {
 

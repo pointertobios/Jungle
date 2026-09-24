@@ -12,7 +12,7 @@
 #include "jungle/serde/deserialize.h"
 #include "jungle/serde/serde.h"
 #include "jungle/serde/serialize.h"
-#include "jungle/types/uchar.h"
+#include "jungle/types/ustr.h"
 
 namespace jungle::serde {
 

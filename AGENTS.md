@@ -17,14 +17,15 @@ Jungle 是一个实验性 C++26 游戏引擎，详情参见 [README.md](./README
 
 | 模块             | 命名空间         | 用途                                               | 状态   |
 | ---------------- | ---------------- | -------------------------------------------------- | ------ |
-| `jungle-base/`   | `jungle::`       | 类型系统、容器、代数、反射、序列化、调试、测试框架 | ✅ 活跃 |
+| `jungle-infrastructure/` | `jungle::` | 无分配类型系统、工具、OS 进程/线程、构建 ID | ✅ 活跃 |
+| `jungle-base/`   | `jungle::`       | 容器、代数、反射、序列化、调试、测试框架、字符串    | ✅ 活跃 |
 | `jungle-core/`   | `jungle::core::` | ECS 核心（Entity、Component、Archetype、Manager）  | ✅ 活跃 |
 | `jungle-api/`    | —                | 占位                                               | ❌      |
 | `jungle-client/` | —                | 占位                                               | ❌      |
 | `jungle-server/` | —                | 占位                                               | ❌      |
 | `jungle-ui/`     | —                | 占位                                               | ❌      |
 
-依赖：`jungle-core` → `jungle-base`（其他模块目前为空壳）。
+依赖：`jungle-core` → `jungle-base` → `jungle-infrastructure`；`jungle-tasks` → `jungle-base`（其他模块目前为空壳）。
 
 ## 命名与代码风格
 

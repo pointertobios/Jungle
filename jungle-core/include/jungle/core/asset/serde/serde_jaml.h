@@ -17,7 +17,7 @@
 #include "jungle/serde/serialize.h"
 #include "jungle/types/concepts.h"
 #include "jungle/types/int.h"
-#include "jungle/types/uchar.h"
+#include "jungle/types/ustr.h"
 
 namespace jungle::core::asset {
 

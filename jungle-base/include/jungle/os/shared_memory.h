@@ -10,7 +10,7 @@
 #include "jungle/constants.h"
 #include "jungle/types/erased.h"
 #include "jungle/types/int.h"
-#include "jungle/types/uchar.h"
+#include "jungle/types/ustr.h"
 
 namespace jungle::os {
 

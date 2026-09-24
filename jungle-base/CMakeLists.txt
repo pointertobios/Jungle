@@ -42,38 +42,8 @@ elseif (WIN32)
     set(JUNGLE_DEPLIBS ${JUNGLE_DEPLIBS} atomic)
 endif()
 
-set(JUNGLE_OPTIONS
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Werror
-    -freflection
-    -fno-rtti
-    -fno-exceptions
-    -fconcepts-diagnostics-depth=6
-)
-
-include(JungleBuildId)
-jungle_generate_build_id(JUNGLE_BUILD_ID "${CMAKE_SOURCE_DIR}")
-
-set(JUNGLE_DEFINES
-    $<$<CONFIG:Debug>:JUNGLE_DEBUG_ENABLED>
-    $<$<CONFIG:RelWithDebInfo>:JUNGLE_DEBUG_ENABLED>
-    JUNGLE_BUILD_ID="${JUNGLE_BUILD_ID}"
-)
-
-set(JUNGLE_CONFIG_EMPTY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/jungle-config-empty.cpp)
-if(NOT EXISTS "${JUNGLE_CONFIG_EMPTY_SOURCE}")
-    file(WRITE "${JUNGLE_CONFIG_EMPTY_SOURCE}" "")
-endif()
-
-add_library(jungle-config STATIC ${JUNGLE_CONFIG_EMPTY_SOURCE})
-target_compile_options(jungle-config PUBLIC ${JUNGLE_OPTIONS})
-target_compile_definitions(jungle-config PUBLIC ${JUNGLE_DEFINES})
-add_library(jungle::config ALIAS jungle-config)
-
 add_library(jungle-base ${JUNGLE_SOURCES})
 target_precompile_headers(jungle-base PUBLIC ${PRECOMPILE_HEADERS})
-target_link_libraries(jungle-base PUBLIC ${JUNGLE_DEPLIBS} jungle::config)
+target_link_libraries(jungle-base PUBLIC ${JUNGLE_DEPLIBS} jungle::infrastructure)
 target_include_directories(jungle-base PUBLIC include)
 add_library(jungle::base ALIAS jungle-base)

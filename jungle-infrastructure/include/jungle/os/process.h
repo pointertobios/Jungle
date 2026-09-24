@@ -4,9 +4,7 @@
 #pragma once
 
 #include <string>
-#include <string_view>
 #include <thread>
-#include <vector>
 
 #include "jungle/types/int.h"
 
@@ -14,20 +12,20 @@ namespace jungle::os {
 
 class cpu_set final {
 public:
-    cpu_set();
+    cpu_set() = default;
 
-    cpu_set(const cpu_set &) = delete;
-    cpu_set &operator=(const cpu_set &) = delete;
+    cpu_set(const cpu_set &) = default;
+    cpu_set &operator=(const cpu_set &) = default;
 
     cpu_set(cpu_set &&) = default;
     cpu_set &operator=(cpu_set &&) = default;
 
     cpu_set with(usize id) &&;
 
-    std::vector<usize> &get_all();
+    u128 get() const { return m_bits; }
 
 private:
-    std::vector<usize> m_cpus;
+    u128 m_bits{0};
 };
 
 class thread_handle final {
